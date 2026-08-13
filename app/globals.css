@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f7f7fb;
+  --foreground: #14141c;
+  --surface: #ffffff;
+  --surface-border: #e4e4ec;
+  --muted: #6b6b7a;
+  --accent: #6d5ef8;
+  --accent-hover: #5b4de0;
+  --accent-foreground: #ffffff;
+  --danger: #e5484d;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-border: var(--surface-border);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0b0b10;
+    --foreground: #f2f2f6;
+    --surface: #16161e;
+    --surface-border: #26262f;
+    --muted: #9494a3;
+    --accent: #8577ff;
+    --accent-hover: #9a8fff;
+    --accent-foreground: #0b0b10;
+    --danger: #ff6b70;
+  }
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 10% -10%, color-mix(in srgb, var(--accent) 12%, transparent), transparent),
+    var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}

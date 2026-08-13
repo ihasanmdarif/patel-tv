@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Profile {
+  id              String    @id @default(cuid())
+  name            String
+  portalUrl       String
+  macAddress      String
+  serialNumber    String?
+  // Device identity below: some Stalker/Ministra portals bind a session to the exact
+  // device_id/device_id2/signature/hw_version captured from the real STB, not a value
+  // derived from mac/serial. Optional — only send what the provider actually requires.
+  stbType         String?
+  clientType      String?
+  deviceId        String?
+  deviceId2       String?
+  signature       String?
+  hwVersion       String?
+  hwVersion2      String?
+  prehash         String?
+  imageVersion    String?
+  apiSignature    String?
+  timezone        String?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  lastConnectedAt DateTime?
+}
