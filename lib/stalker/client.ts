@@ -228,42 +228,77 @@ type RawChannel = {
   tv_genre_id?: string | number;
 };
 
+function toChannel(c: RawChannel): Channel {
+  return {
+    id: String(c.id),
+    name: c.name,
+    number: c.number != null ? String(c.number) : null,
+    cmd: c.cmd,
+    logo: c.logo ?? null,
+    genreId: c.tv_genre_id != null ? String(c.tv_genre_id) : null,
+  };
+}
+
+async function fetchChannelPage(
+  config: StalkerProfileConfig,
+  token: string,
+  page: number,
+  genreId?: string
+): Promise<{ data: RawChannel[]; totalItems?: number }> {
+  const params: Record<string, string> = {
+    type: "itv",
+    action: "get_ordered_list",
+    p: String(page),
+    force_ch_link_check: "0",
+  };
+  if (genreId) params.genre = genreId;
+
+  const js = (await stalkerRequest(config, params, token)) as {
+    data: RawChannel[];
+    total_items?: number;
+  };
+  return { data: js.data ?? [], totalItems: js.total_items };
+}
+
+// The unfiltered/"All" listing can span 100+ pages; fetching them one at a time turns into a
+// minute-plus wait. Fetch the first page to learn the page size and total count, then fetch the
+// rest concurrently (bounded, so we don't hammer the portal) instead of walking pages serially.
+const PAGE_FETCH_CONCURRENCY = 8;
+const MAX_PAGES = 1000; // safety net against an unexpected payload shape looping forever
+
 export async function getChannels(
   config: StalkerProfileConfig,
   genreId?: string
 ): Promise<Channel[]> {
   return callWithRetry(config, async (token) => {
-    const channels: Channel[] = [];
-    let page = 1;
-    // Stalker paginates ~14 channels per page; walk pages until total_items is covered.
-    for (;;) {
-      const params: Record<string, string> = {
-        type: "itv",
-        action: "get_ordered_list",
-        p: String(page),
-        force_ch_link_check: "0",
-      };
-      if (genreId) params.genre = genreId;
+    const first = await fetchChannelPage(config, token, 1, genreId);
+    const channels = first.data.map(toChannel);
+    const pageSize = first.data.length;
+    const totalItems = first.totalItems ?? pageSize;
 
-      const js = (await stalkerRequest(config, params, token)) as {
-        data: RawChannel[];
-        total_items?: number;
-      };
-      const data = js.data ?? [];
-      for (const c of data) {
-        channels.push({
-          id: String(c.id),
-          name: c.name,
-          number: c.number != null ? String(c.number) : null,
-          cmd: c.cmd,
-          logo: c.logo ?? null,
-          genreId: c.tv_genre_id != null ? String(c.tv_genre_id) : null,
-        });
+    if (pageSize === 0 || channels.length >= totalItems) return channels;
+
+    const totalPages = Math.min(Math.ceil(totalItems / pageSize), MAX_PAGES);
+    const remainingPages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
+
+    const results: RawChannel[][] = new Array(remainingPages.length);
+    let next = 0;
+    async function worker() {
+      for (;;) {
+        const i = next++;
+        if (i >= remainingPages.length) return;
+        const { data } = await fetchChannelPage(config, token, remainingPages[i], genreId);
+        results[i] = data;
+        if (data.length === 0) return; // portal ran out of pages early
       }
-      const totalItems = js.total_items ?? data.length;
-      if (data.length === 0 || channels.length >= totalItems) break;
-      page += 1;
-      if (page > 200) break; // safety net against an unexpected payload shape looping forever
+    }
+    await Promise.all(
+      Array.from({ length: Math.min(PAGE_FETCH_CONCURRENCY, remainingPages.length) }, worker)
+    );
+
+    for (const data of results) {
+      if (!data) continue;
+      for (const c of data) channels.push(toChannel(c));
     }
     return channels;
   });

@@ -34,11 +34,10 @@ export default function VideoPlayer({
       if (!video) return;
 
       if (kind === "hls") {
-        if (video.canPlayType("application/vnd.apple.mpegurl")) {
-          video.src = src;
-          video.play().catch(() => {});
-          return;
-        }
+        // Chrome's canPlayType("application/vnd.apple.mpegurl") can return "maybe" even
+        // though it can't actually demux HLS — only Safari has real native HLS support.
+        // Prefer hls.js whenever it's available and only fall back to native <video> src
+        // (Safari, or any browser lacking MSE) when it isn't.
         if (Hls.isSupported()) {
           hls = new Hls();
           hls.on(Hls.Events.ERROR, (_evt, data) => {
@@ -49,6 +48,11 @@ export default function VideoPlayer({
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
             video.play().catch(() => {});
           });
+          return;
+        }
+        if (video.canPlayType("application/vnd.apple.mpegurl")) {
+          video.src = src;
+          video.play().catch(() => {});
           return;
         }
         setError("HLS playback is not supported in this browser.");

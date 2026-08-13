@@ -16,6 +16,7 @@ export async function GET(
     const channels = await getChannels(config, genreId);
     return NextResponse.json(channels);
   } catch (err) {
+    console.error("Error fetching channels:", err);
     const status = err instanceof StalkerError ? 502 : 500;
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status });

@@ -67,7 +67,9 @@ export default function WatchClient({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingChannels(true);
     setChannelsError(null);
-    const qs = selectedGenre ? `?genreId=${encodeURIComponent(selectedGenre)}` : "";
+    // "*" is the portal's own catch-all genre id; omitting the param entirely hits a much
+    // slower unfiltered listing path on some Stalker portals.
+    const qs = `?genreId=${encodeURIComponent(selectedGenre ?? "*")}`;
     fetch(`/api/stalker/${profileId}/channels${qs}`)
       .then(async (res) => {
         const data = await res.json();
