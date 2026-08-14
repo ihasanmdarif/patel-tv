@@ -53,24 +53,17 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max,scope=remux
 
-  # Optional — the ssh step only runs if DEPLOY_HOST is configured in repo secrets.
-  # SSHes into the self-hosted box and pulls+restarts the whole stack via
-  # docker-compose.yml. (`secrets` isn't a readable context inside any `if:` —
-  # alias it to a plain `env` var first, `if:` can read that instead.)
+  # Runs directly on the self-hosted runner installed on the Proxmox VM itself
+  # (Settings → Actions → Runners) — that box is LAN-only, so a GitHub-hosted
+  # runner SSHing in from the public internet can never reach it. The runner
+  # dials out to GitHub instead, same direction as the cloudflared tunnel.
   deploy:
     needs: [build-app, build-remux]
-    runs-on: ubuntu-latest
-    env:
-      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+    runs-on: [self-hosted, proxmox]
     steps:
-      - name: Pull and restart on host
-        if: ${{ env.DEPLOY_HOST != '' }}
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
-            cd ${{ secrets.DEPLOY_PATH }}
-            docker compose pull
-            docker compose up -d
+      - name: Pull and restart
+        working-directory: /root/patel-tv
+        run: |
+          docker compose pull
+          docker compose up -d
+          docker image prune -f
