@@ -4,6 +4,7 @@ import { getActiveProfileId } from "@/lib/active-profile";
 import { loadProfileConfig } from "@/lib/stalker/load-profile";
 import { getVodCategories, getVodItems } from "@/lib/stalker/client";
 import { buildWatchUrl } from "@/lib/watch-url";
+import { getCurrentUser } from "@/lib/session";
 import Rail, { type RailCard } from "@/components/home/Rail";
 
 export const dynamic = "force-dynamic";
@@ -60,17 +61,23 @@ export default async function HomePage() {
     );
   }
 
+  const user = await getCurrentUser();
+
   const [favorites, history, config] = await Promise.all([
-    prisma.favorite.findMany({
-      where: { profileId },
-      orderBy: { createdAt: "desc" },
-      take: 12,
-    }),
-    prisma.watchHistory.findMany({
-      where: { profileId },
-      orderBy: { updatedAt: "desc" },
-      take: 12,
-    }),
+    user
+      ? prisma.favorite.findMany({
+          where: { userId: user.id, profileId },
+          orderBy: { createdAt: "desc" },
+          take: 12,
+        })
+      : [],
+    user
+      ? prisma.watchHistory.findMany({
+          where: { userId: user.id, profileId },
+          orderBy: { updatedAt: "desc" },
+          take: 12,
+        })
+      : [],
     loadProfileConfig(profileId),
   ]);
 

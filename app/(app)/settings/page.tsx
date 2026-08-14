@@ -1,13 +1,19 @@
 import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/session";
 import ProfilesClient from "@/components/ProfilesClient";
 import SettingsTabs from "@/components/settings/SettingsTabs";
 import PlayerPrefsForm from "@/components/settings/PlayerPrefsForm";
+import UsersAdmin from "@/components/settings/UsersAdmin";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const profiles = await prisma.profile.findMany({ orderBy: { createdAt: "desc" } });
+  const [profiles, user] = await Promise.all([
+    prisma.profile.findMany({ orderBy: { createdAt: "desc" } }),
+    getCurrentUser(),
+  ]);
+  const isAdmin = user?.role === "admin";
 
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-10">
@@ -42,6 +48,7 @@ export default async function SettingsPage() {
               />
             }
             player={<PlayerPrefsForm />}
+            users={isAdmin && user ? <UsersAdmin currentUserId={user.id} /> : undefined}
           />
         </Suspense>
       </div>

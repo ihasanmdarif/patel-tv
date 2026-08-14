@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ContentType } from "@prisma/client";
+import { getCurrentUser } from "@/lib/session";
 
 // Live channels don't get history rows, only VOD/series playback.
 function parseContentType(value: unknown): Extract<ContentType, "MOVIE" | "EPISODE"> | null {
@@ -8,6 +9,9 @@ function parseContentType(value: unknown): Extract<ContentType, "MOVIE" | "EPISO
 }
 
 export async function GET(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const profileId = req.nextUrl.searchParams.get("profileId");
   if (!profileId) {
     return NextResponse.json({ error: "profileId is required" }, { status: 400 });
@@ -16,7 +20,7 @@ export async function GET(req: NextRequest) {
   const limit = limitParam ? Math.min(Math.max(Number(limitParam), 1), 100) : 20;
 
   const history = await prisma.watchHistory.findMany({
-    where: { profileId },
+    where: { userId: user.id, profileId },
     orderBy: { updatedAt: "desc" },
     take: Number.isFinite(limit) ? limit : 20,
   });
@@ -25,6 +29,9 @@ export async function GET(req: NextRequest) {
 
 // Autosave: called every ~10s while playing. Always an upsert, never read-then-write.
 export async function POST(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const body = await req.json();
   const { profileId, contentId, title, cmd } = body as Record<string, string | undefined>;
   const contentType = parseContentType(body.contentType);
@@ -40,8 +47,11 @@ export async function POST(req: NextRequest) {
   const durationSec = body.durationSec != null ? Number(body.durationSec) : undefined;
 
   const entry = await prisma.watchHistory.upsert({
-    where: { profileId_contentType_contentId: { profileId, contentType, contentId } },
+    where: {
+      userId_profileId_contentType_contentId: { userId: user.id, profileId, contentType, contentId },
+    },
     create: {
+      userId: user.id,
       profileId,
       contentType,
       contentId,

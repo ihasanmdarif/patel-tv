@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ContentType } from "@prisma/client";
+import { getCurrentUser } from "@/lib/session";
 
 function parseContentType(value: unknown): ContentType | null {
   return typeof value === "string" && value in ContentType ? (value as ContentType) : null;
 }
 
 export async function GET(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const profileId = req.nextUrl.searchParams.get("profileId");
   if (!profileId) {
     return NextResponse.json({ error: "profileId is required" }, { status: 400 });
@@ -14,13 +18,16 @@ export async function GET(req: NextRequest) {
   const contentType = parseContentType(req.nextUrl.searchParams.get("contentType"));
 
   const favorites = await prisma.favorite.findMany({
-    where: { profileId, ...(contentType ? { contentType } : {}) },
+    where: { userId: user.id, profileId, ...(contentType ? { contentType } : {}) },
     orderBy: { createdAt: "desc" },
   });
   return NextResponse.json(favorites);
 }
 
 export async function POST(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const body = await req.json();
   const { profileId, contentId, title } = body as Record<string, string | undefined>;
   const contentType = parseContentType(body.contentType);
@@ -33,8 +40,11 @@ export async function POST(req: NextRequest) {
   }
 
   const favorite = await prisma.favorite.upsert({
-    where: { profileId_contentType_contentId: { profileId, contentType, contentId } },
+    where: {
+      userId_profileId_contentType_contentId: { userId: user.id, profileId, contentType, contentId },
+    },
     create: {
+      userId: user.id,
       profileId,
       contentType,
       contentId,
@@ -49,6 +59,9 @@ export async function POST(req: NextRequest) {
 // Optimistic-toggle-off path: the UI doesn't need to hold onto the Favorite row's
 // cuid, just the (profileId, contentType, contentId) it already has in hand.
 export async function DELETE(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const profileId = req.nextUrl.searchParams.get("profileId");
   const contentId = req.nextUrl.searchParams.get("contentId");
   const contentType = parseContentType(req.nextUrl.searchParams.get("contentType"));
@@ -60,7 +73,11 @@ export async function DELETE(req: NextRequest) {
   }
 
   await prisma.favorite
-    .delete({ where: { profileId_contentType_contentId: { profileId, contentType, contentId } } })
+    .delete({
+      where: {
+        userId_profileId_contentType_contentId: { userId: user.id, profileId, contentType, contentId },
+      },
+    })
     .catch(() => null);
   return NextResponse.json({ ok: true });
 }

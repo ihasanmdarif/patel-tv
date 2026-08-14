@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
 
 function IconLogout(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -15,7 +16,7 @@ export default function LogoutButton() {
   const router = useRouter();
 
   async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await authClient.signOut();
     router.push("/login");
     router.refresh();
   }

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getActiveProfileId } from "@/lib/active-profile";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/session";
 import WatchPageClient from "@/components/WatchPageClient";
 
 export const dynamic = "force-dynamic";
@@ -28,11 +29,13 @@ export default async function WatchPage({
   const contentType: ContentType | null =
     sp.contentType === "MOVIE" || sp.contentType === "EPISODE" ? sp.contentType : null;
 
+  const user = await getCurrentUser();
   const history =
-    contentType && sp.contentId
+    user && contentType && sp.contentId
       ? await prisma.watchHistory.findUnique({
           where: {
-            profileId_contentType_contentId: {
+            userId_profileId_contentType_contentId: {
+              userId: user.id,
               profileId,
               contentType,
               contentId: sp.contentId,

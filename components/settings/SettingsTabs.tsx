@@ -5,23 +5,28 @@ import { useRouter, useSearchParams } from "next/navigation";
 const TABS = [
   { id: "sources", label: "Sources" },
   { id: "player", label: "Player" },
+  { id: "users", label: "Users" },
 ] as const;
 
 export default function SettingsTabs({
   sources,
   player,
+  users,
 }: {
   sources: React.ReactNode;
   player: React.ReactNode;
+  users?: React.ReactNode;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const active = searchParams.get("tab") === "player" ? "player" : "sources";
+  const requested = searchParams.get("tab");
+  const active = requested === "player" ? "player" : requested === "users" && users ? "users" : "sources";
+  const tabs = users ? TABS : TABS.filter((t) => t.id !== "users");
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex gap-1 border-b border-surface-border">
-        {TABS.map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => router.replace(`/settings?tab=${tab.id}`)}
@@ -35,7 +40,9 @@ export default function SettingsTabs({
           </button>
         ))}
       </div>
-      {active === "sources" ? sources : player}
+      {active === "sources" && sources}
+      {active === "player" && player}
+      {active === "users" && users}
     </div>
   );
 }
