@@ -55,14 +55,16 @@ jobs:
 
   # Optional — the ssh step only runs if DEPLOY_HOST is configured in repo secrets.
   # SSHes into the self-hosted box and pulls+restarts the whole stack via
-  # docker-compose.yml. (secrets can't be referenced in a job-level `if:`, only a
-  # step-level one — hence the job always "runs" but its one step may no-op.)
+  # docker-compose.yml. (`secrets` isn't a readable context inside any `if:` —
+  # alias it to a plain `env` var first, `if:` can read that instead.)
   deploy:
     needs: [build-app, build-remux]
     runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
     steps:
       - name: Pull and restart on host
-        if: ${{ secrets.DEPLOY_HOST != '' }}
+        if: ${{ env.DEPLOY_HOST != '' }}
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DEPLOY_HOST }}
