@@ -4,6 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { buildWatchUrl } from "@/lib/watch-url";
 
+// Portal logo files are frequently missing/broken (dead links from the provider, not a
+// fetch bug on our end) — hide the <img> on error so the letter tile underneath shows
+// through instead of a broken-image icon.
+function hideOnError(e: React.SyntheticEvent<HTMLImageElement>) {
+  e.currentTarget.style.display = "none";
+}
+
 type SeriesEpisode = { id: string; title: string; cmd: string; seasonId: string };
 type SeriesSeason = { id: string; title: string; episodes: SeriesEpisode[] };
 
@@ -35,12 +42,20 @@ export default function SeriesDetail({
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-4">
         <div
-          className="h-28 w-20 shrink-0 overflow-hidden bg-bg-tertiary"
+          className="relative h-28 w-20 shrink-0 overflow-hidden bg-bg-tertiary"
           style={{ borderRadius: "var(--radius-md)" }}
         >
+          <div className="flex h-full w-full items-center justify-center text-xl text-muted">
+            {title.slice(0, 1).toUpperCase()}
+          </div>
           {logo && (
             // eslint-disable-next-line @next/next/no-img-element -- portal-hosted logo, arbitrary host
-            <img src={logo} alt="" className="h-full w-full object-cover" />
+            <img
+              src={logo}
+              alt=""
+              onError={hideOnError}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
           )}
         </div>
         <h1 className="font-heading text-2xl font-semibold">{title}</h1>

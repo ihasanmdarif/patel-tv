@@ -13,6 +13,13 @@ type Channel = {
   logo: string | null;
 };
 
+// Portal logo files are frequently missing/broken (dead links from the provider, not a
+// fetch bug on our end) — hide the <img> on error so the letter tile underneath shows
+// through instead of a broken-image icon.
+function hideOnError(e: React.SyntheticEvent<HTMLImageElement>) {
+  e.currentTarget.style.display = "none";
+}
+
 function IconArrowLeft(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...props}>
@@ -155,29 +162,31 @@ export default function WatchClient({
         <h1 className="text-sm font-semibold">{profileName}</h1>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        <aside className="flex w-56 flex-col overflow-y-auto border-r border-surface-border bg-surface/60 py-2">
-          <button
-            onClick={() => setSelectedGenre(null)}
-            className={`mx-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition ${
-              selectedGenre === null
-                ? "bg-accent/10 text-accent"
-                : "text-foreground hover:bg-surface-border/50"
-            }`}
-          >
-            All genres
-          </button>
+      <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
+        <aside className="flex w-full shrink-0 flex-row gap-1 overflow-x-auto border-b border-surface-border bg-surface/60 p-2 md:w-56 md:flex-col md:gap-0 md:overflow-y-auto md:border-b-0 md:border-r md:py-2">
+          {process.env.NODE_ENV !== "development" && (
+            <button
+              onClick={() => setSelectedGenre(null)}
+              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm font-medium transition md:mx-2 md:whitespace-normal ${
+                selectedGenre === null
+                  ? "bg-accent/10 text-accent"
+                  : "text-foreground hover:bg-surface-border/50"
+              }`}
+            >
+              All genres
+            </button>
+          )}
           {loadingGenres && (
-            <p className="flex items-center gap-2 px-5 py-2 text-sm text-muted">
+            <p className="flex shrink-0 items-center gap-2 px-5 py-2 text-sm text-muted">
               <Spinner /> Loading genres...
             </p>
           )}
-          {genresError && <p className="px-5 py-2 text-sm text-danger">{genresError}</p>}
+          {genresError && <p className="shrink-0 px-5 py-2 text-sm text-danger">{genresError}</p>}
           {genres.map((g) => (
             <button
               key={g.id}
               onClick={() => setSelectedGenre(g.id)}
-              className={`mx-2 rounded-lg px-3 py-2 text-left text-sm transition ${
+              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm transition md:mx-2 md:whitespace-normal ${
                 selectedGenre === g.id
                   ? "bg-accent/10 font-medium text-accent"
                   : "text-foreground hover:bg-surface-border/50"
@@ -188,8 +197,8 @@ export default function WatchClient({
           ))}
         </aside>
 
-        <main className="flex flex-1 overflow-hidden">
-          <div className="flex w-72 flex-col border-r border-surface-border">
+        <main className="flex flex-1 flex-col overflow-hidden md:flex-row">
+          <div className="flex max-h-64 w-full shrink-0 flex-col border-b border-surface-border md:h-auto md:max-h-none md:w-72 md:border-b-0 md:border-r">
             <div className="p-2">
               <input
                 value={search}
@@ -219,9 +228,23 @@ export default function WatchClient({
                   >
                     <button
                       onClick={() => playChannel(c)}
-                      className="flex flex-1 items-center gap-2 text-left"
+                      className="flex flex-1 items-center gap-2 overflow-hidden text-left"
                     >
-                      {c.number && <span className="w-6 shrink-0 text-xs text-muted">{c.number}</span>}
+                      <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded bg-bg-tertiary">
+                        <div className="flex h-full w-full items-center justify-center text-[10px] text-muted">
+                          {c.name.slice(0, 1).toUpperCase()}
+                        </div>
+                        {c.logo && (
+                          // eslint-disable-next-line @next/next/no-img-element -- portal-hosted logo, proxied
+                          <img
+                            src={c.logo}
+                            alt=""
+                            onError={hideOnError}
+                            className="absolute inset-0 h-full w-full object-contain"
+                          />
+                        )}
+                      </div>
+                      {c.number && <span className="shrink-0 text-xs text-muted">{c.number}</span>}
                       <span className="truncate">{c.name}</span>
                     </button>
                     <button
@@ -245,7 +268,7 @@ export default function WatchClient({
             </div>
           </div>
 
-          <div className="flex flex-1 items-center justify-center bg-black p-4">
+          <div className="flex min-h-[220px] flex-1 items-center justify-center bg-black p-4">
             {resolving ? (
               <p className="flex items-center gap-2 text-sm text-zinc-400">
                 <Spinner /> Resolving stream...

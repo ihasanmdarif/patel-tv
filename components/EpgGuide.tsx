@@ -5,8 +5,14 @@ import { useEffect, useState } from "react";
 type Channel = { id: string; name: string; number: string | null; logo: string | null };
 type EpgProgram = { id: string; title: string; startTimestamp: number; stopTimestamp: number };
 
-const CHANNEL_LIMIT = 40; // bound portal load — one epg call per visible channel
 const EPG_CONCURRENCY = 5;
+
+// Portal logo files are frequently missing/broken (dead links from the provider, not a
+// fetch bug on our end) — hide the <img> on error so the letter tile underneath shows
+// through instead of a broken-image icon.
+function hideOnError(e: React.SyntheticEvent<HTMLImageElement>) {
+  e.currentTarget.style.display = "none";
+}
 
 function formatTime(ts: number): string {
   if (!ts) return "";
@@ -14,19 +20,35 @@ function formatTime(ts: number): string {
 }
 
 export default function EpgGuide({ profileId }: { profileId: string }) {
+  const [page, setPage] = useState(1);
   const [channels, setChannels] = useState<Channel[] | null>(null);
+  const [pageSize, setPageSize] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
   const [epgByChannel, setEpgByChannel] = useState<Record<string, EpgProgram[]>>({});
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`/api/stalker/${profileId}/channels?genreId=*`)
+    let cancelled = false;
+    // Re-fires whenever the page changes, so stale channel/EPG state must reset synchronously here.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setChannels(null);
+    setEpgByChannel({});
+    fetch(`/api/stalker/${profileId}/channels?genreId=*&page=${page}`)
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Failed to load channels");
-        setChannels(data.slice(0, CHANNEL_LIMIT));
+        if (cancelled) return;
+        setChannels(data.items);
+        setPageSize(data.pageSize);
+        setTotalItems(data.totalItems);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load channels"));
-  }, [profileId]);
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load channels");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [profileId, page]);
 
   useEffect(() => {
     if (!channels) return;
@@ -62,10 +84,34 @@ export default function EpgGuide({ profileId }: { profileId: string }) {
   if (!channels) return <p className="p-6 text-sm text-muted">Loading guide...</p>;
 
   const hasAnyEpg = Object.values(epgByChannel).some((programs) => programs.length > 0);
+  const totalPages = pageSize > 0 ? Math.ceil(totalItems / pageSize) : page;
+  const canGoPrev = page > 1;
+  const canGoNext = channels.length >= pageSize && page < totalPages;
 
   return (
     <div className="flex flex-col gap-6 p-6 sm:p-8">
-      <h1 className="font-heading text-2xl font-semibold">Guide</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="font-heading text-2xl font-semibold">Guide</h1>
+        <div className="flex items-center gap-3 text-sm">
+          <button
+            onClick={() => setPage((p) => p - 1)}
+            disabled={!canGoPrev}
+            className="rounded-lg border border-surface-border px-3 py-1.5 font-medium transition enabled:hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Prev
+          </button>
+          <span className="text-muted">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => p + 1)}
+            disabled={!canGoNext}
+            className="rounded-lg border border-surface-border px-3 py-1.5 font-medium transition enabled:hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Next
+          </button>
+        </div>
+      </div>
       {Object.keys(epgByChannel).length >= channels.length && !hasAnyEpg && (
         <p className="text-sm text-muted">
           This portal isn&apos;t returning programme data — showing channels without a schedule.
@@ -76,9 +122,25 @@ export default function EpgGuide({ profileId }: { profileId: string }) {
           const programs = epgByChannel[channel.id];
           return (
             <div key={channel.id} className="flex items-center gap-4 px-4 py-3">
-              <div className="w-40 shrink-0 truncate text-sm font-medium">
-                {channel.number && <span className="mr-2 text-xs text-muted">{channel.number}</span>}
-                {channel.name}
+              <div className="flex w-40 shrink-0 items-center gap-2 overflow-hidden">
+                <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded bg-bg-tertiary">
+                  <div className="flex h-full w-full items-center justify-center text-xs text-muted">
+                    {channel.name.slice(0, 1).toUpperCase()}
+                  </div>
+                  {channel.logo && (
+                    // eslint-disable-next-line @next/next/no-img-element -- portal-hosted logo, proxied
+                    <img
+                      src={channel.logo}
+                      alt=""
+                      onError={hideOnError}
+                      className="absolute inset-0 h-full w-full object-contain"
+                    />
+                  )}
+                </div>
+                <div className="truncate text-sm font-medium">
+                  {channel.number && <span className="mr-2 text-xs text-muted">{channel.number}</span>}
+                  {channel.name}
+                </div>
               </div>
               <div className="flex flex-1 gap-3 overflow-x-auto text-xs text-muted">
                 {programs === undefined && <span>Loading...</span>}

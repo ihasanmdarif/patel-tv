@@ -40,7 +40,7 @@ function signature(config: StalkerProfileConfig): string | null {
 
 // Only mac/stb_lang/timezone ride in the Cookie header — device identity goes in the
 // get_profile query params instead (confirmed against live portal traffic).
-function buildCookie(config: StalkerProfileConfig): string {
+export function buildCookie(config: StalkerProfileConfig): string {
   const timezone = config.timezone || "UTC";
   return `mac=${encodeURIComponent(config.macAddress)}; stb_lang=en; timezone=${timezone}`;
 }
@@ -147,6 +147,13 @@ async function handshake(config: StalkerProfileConfig): Promise<string> {
   return js.token;
 }
 
+// Concurrent callers (e.g. the Guide page's parallel EPG-fetch workers) can all miss the
+// token cache at once on a cold load; without dedup each fires its own handshake, and on
+// portals that bind one session per device the later handshakes invalidate the earlier
+// ones mid-flight, so some requests fail with "Authorization failed." Collapse concurrent
+// misses for the same profile onto a single in-flight handshake instead.
+const inFlightHandshakes = new Map<string, Promise<string>>();
+
 async function getValidToken(
   config: StalkerProfileConfig,
   forceRefresh = false
@@ -154,7 +161,19 @@ async function getValidToken(
   if (!forceRefresh) {
     const cached = getCachedToken(config.id);
     if (cached) return cached;
+    const pending = inFlightHandshakes.get(config.id);
+    if (pending) return pending;
   }
+  const promise = acquireToken(config);
+  inFlightHandshakes.set(config.id, promise);
+  try {
+    return await promise;
+  } finally {
+    inFlightHandshakes.delete(config.id);
+  }
+}
+
+async function acquireToken(config: StalkerProfileConfig): Promise<string> {
   const token = await handshake(config);
   // get_profile finalizes the session and, on portals that bind a session to a physical
   // device, is where "Device conflict - Serial Number mismatch" gets thrown if any of this
@@ -236,13 +255,29 @@ type RawChannel = {
   tv_genre_id?: string | number;
 };
 
-function toChannel(c: RawChannel): Channel {
+// Portal serves logos/screenshots behind the same STB-identity gate (User-Agent + mac
+// cookie) as its API and streams — a browser <img> hitting the raw URL directly gets
+// rejected, so route it through the stream proxy (which already sends STB_USER_AGENT).
+// screenshot_uri/logo often comes back portal-relative (e.g. "/screenshots/x.jpg"), and
+// the proxy route 400s on anything that isn't already an absolute URL, so resolve it
+// against the portal's own origin first.
+function buildImageProxyUrl(config: StalkerProfileConfig, rawUrl: string): string | null {
+  let abs: string;
+  try {
+    abs = new URL(rawUrl, config.portalUrl).toString();
+  } catch {
+    return null;
+  }
+  return `/api/stalker/${config.id}/proxy?rawUrl=${encodeURIComponent(abs)}`;
+}
+
+function toChannel(c: RawChannel, config: StalkerProfileConfig): Channel {
   return {
     id: String(c.id),
     name: c.name,
     number: c.number != null ? String(c.number) : null,
     cmd: c.cmd,
-    logo: c.logo ?? null,
+    logo: c.logo ? buildImageProxyUrl(config, c.logo) : null,
     genreId: c.tv_genre_id != null ? String(c.tv_genre_id) : null,
   };
 }
@@ -317,10 +352,27 @@ export async function getChannels(
   return callWithRetry(config, async (token) => {
     return fetchAllPages((page) =>
       fetchChannelPage(config, token, page, genreId).then((r) => ({
-        data: r.data.map(toChannel),
+        data: r.data.map((c) => toChannel(c, config)),
         totalItems: r.totalItems,
       }))
     );
+  });
+}
+
+// Single portal page, no fetchAllPages walk — for UIs (the EPG Guide) that page through
+// channels a screen at a time instead of needing the whole catalog up front.
+export async function getChannelsPage(
+  config: StalkerProfileConfig,
+  page: number,
+  genreId?: string
+): Promise<{ items: Channel[]; page: number; totalItems: number }> {
+  return callWithRetry(config, async (token) => {
+    const { data, totalItems } = await fetchChannelPage(config, token, page, genreId);
+    return {
+      items: data.map((c) => toChannel(c, config)),
+      page,
+      totalItems: totalItems ?? data.length,
+    };
   });
 }
 
@@ -372,12 +424,12 @@ type RawVodItem = {
   series?: unknown[]; // non-empty on portals that flag multi-episode series items this way
 };
 
-function toVodItem(v: RawVodItem): VodItem {
+function toVodItem(v: RawVodItem, config: StalkerProfileConfig): VodItem {
   return {
     id: String(v.id),
     name: v.name,
     cmd: v.cmd,
-    logo: v.screenshot_uri ?? null,
+    logo: v.screenshot_uri ? buildImageProxyUrl(config, v.screenshot_uri) : null,
     categoryId: v.category_id != null ? String(v.category_id) : null,
     isSeries: Array.isArray(v.series) && v.series.length > 0,
     year: v.year != null ? String(v.year) : null,
@@ -412,7 +464,7 @@ export async function getVodItems(
   return callWithRetry(config, async (token) => {
     return fetchAllPages((page) =>
       fetchVodPage(config, token, page, categoryId).then((r) => ({
-        data: r.data.map(toVodItem),
+        data: r.data.map((v) => toVodItem(v, config)),
         totalItems: r.totalItems,
       }))
     );

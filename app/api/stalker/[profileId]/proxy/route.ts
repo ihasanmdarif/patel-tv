@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { loadProfileConfig } from "@/lib/stalker/load-profile";
-import { resolveStream, StalkerError } from "@/lib/stalker/client";
+import { resolveStream, buildCookie, StalkerError } from "@/lib/stalker/client";
 import { STB_USER_AGENT } from "@/lib/stalker/user-agent";
 import { isSafeTarget } from "@/lib/net/safe-target";
 
@@ -73,6 +73,17 @@ export async function GET(
   const upstreamHeaders: Record<string, string> = { "User-Agent": STB_USER_AGENT };
   const range = req.headers.get("range");
   if (range) upstreamHeaders.Range = range;
+  // Screenshots/logos live on the portal host itself (unlike resolved stream URLs, which
+  // point at a separate CDN with their own embedded token) and are gated by the same mac
+  // session cookie as the API — only attach it when the target is actually the portal, so
+  // the mac address doesn't leak to third-party CDN hosts.
+  try {
+    if (targetUrl.hostname === new URL(config.portalUrl).hostname) {
+      upstreamHeaders.Cookie = buildCookie(config);
+    }
+  } catch {
+    // malformed config.portalUrl — skip the cookie, let isSafeTarget/fetch below surface it
+  }
 
   let upstream: Response;
   try {

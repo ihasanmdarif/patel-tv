@@ -2,6 +2,13 @@
 
 import Link from "next/link";
 
+// Portal logo files are frequently missing/broken (dead links from the provider, not a
+// fetch bug on our end) — hide the <img> on error so the letter tile underneath shows
+// through instead of a broken-image icon.
+function hideOnError(e: React.SyntheticEvent<HTMLImageElement>) {
+  e.currentTarget.style.display = "none";
+}
+
 export default function MovieCard({
   title,
   subtitle,
@@ -24,13 +31,17 @@ export default function MovieCard({
           className="relative aspect-[2/3] overflow-hidden bg-bg-tertiary"
           style={{ borderRadius: "var(--radius-md)", boxShadow: "var(--shadow-sm)" }}
         >
-          {logo ? (
+          <div className="flex h-full w-full items-center justify-center text-2xl text-muted">
+            {title.slice(0, 1).toUpperCase()}
+          </div>
+          {logo && (
             // eslint-disable-next-line @next/next/no-img-element -- portal-hosted logos, arbitrary hosts
-            <img src={logo} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-2xl text-muted">
-              {title.slice(0, 1).toUpperCase()}
-            </div>
+            <img
+              src={logo}
+              alt=""
+              onError={hideOnError}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
           )}
           <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-black">
