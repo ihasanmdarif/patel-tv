@@ -18,7 +18,6 @@ export default async function WatchPage({
     title?: string;
     seriesId?: string;
     seriesTitle?: string;
-    logo?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -52,7 +51,6 @@ export default async function WatchPage({
       title={sp.title ?? "Untitled"}
       seriesId={sp.seriesId ?? null}
       seriesTitle={sp.seriesTitle ?? null}
-      logo={sp.logo ?? null}
       resumeSec={history?.positionSec ?? 0}
       durationSec={history?.durationSec ?? null}
     />

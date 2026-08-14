@@ -27,14 +27,12 @@ async function getRecentVod(
         key: i.id,
         title: i.name,
         subtitle: i.year ?? undefined,
-        logo: i.logo,
         href: buildWatchUrl({
           cmd: i.cmd,
           type: "vod",
           contentType: wantSeries ? "EPISODE" : "MOVIE",
           contentId: i.id,
           title: i.name,
-          logo: i.logo,
         }),
       }));
   } catch {
@@ -79,7 +77,6 @@ export default async function HomePage() {
   const favoriteCards: RailCard[] = favorites.map((f) => ({
     key: f.id,
     title: f.title,
-    logo: f.logo,
     href:
       f.contentType === "CHANNEL"
         ? `/live/${profileId}`
@@ -89,7 +86,6 @@ export default async function HomePage() {
             contentType: f.contentType === "MOVIE" ? "MOVIE" : "EPISODE",
             contentId: f.contentId,
             title: f.title,
-            logo: f.logo,
           }),
   }));
 
@@ -97,7 +93,6 @@ export default async function HomePage() {
     key: h.id,
     title: h.title,
     subtitle: h.seriesTitle ?? undefined,
-    logo: h.logo,
     progressPct: h.durationSec ? (h.positionSec / h.durationSec) * 100 : undefined,
     href: buildWatchUrl({
       cmd: h.cmd,
@@ -107,7 +102,6 @@ export default async function HomePage() {
       title: h.title,
       seriesId: h.seriesId,
       seriesTitle: h.seriesTitle,
-      logo: h.logo,
     }),
   }));
 

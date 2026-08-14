@@ -2,24 +2,15 @@
 
 import Link from "next/link";
 
-// Portal logo files are frequently missing/broken (dead links from the provider, not a
-// fetch bug on our end) — hide the <img> on error so the letter tile underneath shows
-// through instead of a broken-image icon.
-function hideOnError(e: React.SyntheticEvent<HTMLImageElement>) {
-  e.currentTarget.style.display = "none";
-}
-
 export default function MovieCard({
   title,
   subtitle,
-  logo,
   href,
   favorited,
   onToggleFavorite,
 }: {
   title: string;
   subtitle?: string | null;
-  logo?: string | null;
   href: string;
   favorited: boolean;
   onToggleFavorite: () => void;
@@ -34,15 +25,6 @@ export default function MovieCard({
           <div className="flex h-full w-full items-center justify-center text-2xl text-muted">
             {title.slice(0, 1).toUpperCase()}
           </div>
-          {logo && (
-            // eslint-disable-next-line @next/next/no-img-element -- portal-hosted logos, arbitrary hosts
-            <img
-              src={logo}
-              alt=""
-              onError={hideOnError}
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-          )}
           <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-black">
               <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">

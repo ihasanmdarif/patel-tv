@@ -9,7 +9,6 @@ type VodItem = {
   id: string;
   name: string;
   cmd: string;
-  logo: string | null;
   categoryId: string | null;
   isSeries: boolean;
   year: string | null;
@@ -93,7 +92,6 @@ export default function VodBrowser({
           contentId: item.id,
           cmd: item.cmd,
           title: item.name,
-          logo: item.logo,
         }),
       });
     }
@@ -142,22 +140,17 @@ export default function VodBrowser({
             key={item.id}
             title={item.name}
             subtitle={item.year}
-            logo={item.logo}
             favorited={favoriteIds.has(item.id)}
             onToggleFavorite={() => toggleFavorite(item)}
             href={
               wantSeries
-                ? `/series/${item.id}?${new URLSearchParams({
-                    title: item.name,
-                    ...(item.logo ? { logo: item.logo } : {}),
-                  }).toString()}`
+                ? `/series/${item.id}?${new URLSearchParams({ title: item.name }).toString()}`
                 : buildWatchUrl({
                     cmd: item.cmd,
                     type: "vod",
                     contentType: "MOVIE",
                     contentId: item.id,
                     title: item.name,
-                    logo: item.logo,
                   })
             }
           />

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getActiveProfileId } from "@/lib/active-profile";
 import { ProfileProvider } from "@/components/ProfileContext";
-import Navbar from "@/components/Navbar";
+import Sidebar from "@/components/Sidebar";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const [profiles, activeProfileId] = await Promise.all([
@@ -11,8 +11,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <ProfileProvider profiles={profiles} activeProfileId={activeProfileId}>
-      <Navbar />
-      <main className="flex flex-1 flex-col">{children}</main>
+      <div className="flex min-h-screen flex-1">
+        <Sidebar />
+        <main className="flex min-w-0 flex-1 flex-col">{children}</main>
+      </div>
     </ProfileProvider>
   );
 }

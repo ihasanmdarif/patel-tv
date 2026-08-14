@@ -2,17 +2,10 @@
 
 import { useEffect, useState } from "react";
 
-type Channel = { id: string; name: string; number: string | null; logo: string | null };
+type Channel = { id: string; name: string; number: string | null };
 type EpgProgram = { id: string; title: string; startTimestamp: number; stopTimestamp: number };
 
 const EPG_CONCURRENCY = 5;
-
-// Portal logo files are frequently missing/broken (dead links from the provider, not a
-// fetch bug on our end) — hide the <img> on error so the letter tile underneath shows
-// through instead of a broken-image icon.
-function hideOnError(e: React.SyntheticEvent<HTMLImageElement>) {
-  e.currentTarget.style.display = "none";
-}
 
 function formatTime(ts: number): string {
   if (!ts) return "";
@@ -127,15 +120,6 @@ export default function EpgGuide({ profileId }: { profileId: string }) {
                   <div className="flex h-full w-full items-center justify-center text-xs text-muted">
                     {channel.name.slice(0, 1).toUpperCase()}
                   </div>
-                  {channel.logo && (
-                    // eslint-disable-next-line @next/next/no-img-element -- portal-hosted logo, proxied
-                    <img
-                      src={channel.logo}
-                      alt=""
-                      onError={hideOnError}
-                      className="absolute inset-0 h-full w-full object-contain"
-                    />
-                  )}
                 </div>
                 <div className="truncate text-sm font-medium">
                   {channel.number && <span className="mr-2 text-xs text-muted">{channel.number}</span>}

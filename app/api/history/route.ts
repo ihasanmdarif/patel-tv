@@ -48,7 +48,6 @@ export async function POST(req: NextRequest) {
       seriesId: (body.seriesId as string | undefined) ?? null,
       title,
       seriesTitle: (body.seriesTitle as string | undefined) ?? null,
-      logo: (body.logo as string | undefined) ?? null,
       positionSec,
       durationSec: Number.isFinite(durationSec) ? durationSec : null,
       cmd,

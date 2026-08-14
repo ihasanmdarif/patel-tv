@@ -6,7 +6,6 @@ export function buildWatchUrl(params: {
   title: string;
   seriesId?: string | null;
   seriesTitle?: string | null;
-  logo?: string | null;
 }): string {
   const qs = new URLSearchParams();
   qs.set("cmd", params.cmd);
@@ -16,6 +15,5 @@ export function buildWatchUrl(params: {
   if (params.contentId) qs.set("contentId", params.contentId);
   if (params.seriesId) qs.set("seriesId", params.seriesId);
   if (params.seriesTitle) qs.set("seriesTitle", params.seriesTitle);
-  if (params.logo) qs.set("logo", params.logo);
   return `/watch?${qs.toString()}`;
 }

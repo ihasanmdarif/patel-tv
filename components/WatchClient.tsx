@@ -10,15 +10,7 @@ type Channel = {
   name: string;
   number: string | null;
   cmd: string;
-  logo: string | null;
 };
-
-// Portal logo files are frequently missing/broken (dead links from the provider, not a
-// fetch bug on our end) — hide the <img> on error so the letter tile underneath shows
-// through instead of a broken-image icon.
-function hideOnError(e: React.SyntheticEvent<HTMLImageElement>) {
-  e.currentTarget.style.display = "none";
-}
 
 function IconArrowLeft(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -90,7 +82,6 @@ export default function WatchClient({
           contentId: channel.id,
           cmd: channel.cmd,
           title: channel.name,
-          logo: channel.logo,
         }),
       });
     }
@@ -112,6 +103,7 @@ export default function WatchClient({
   }, [profileId]);
 
   useEffect(() => {
+    let cancelled = false;
     // Re-fires whenever the selected genre changes, so the loading flag must reset synchronously here.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingChannels(true);
@@ -123,10 +115,19 @@ export default function WatchClient({
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Failed to load channels");
-        setChannels(data);
+        // A slower, stale request (e.g. from a genre picked before this one) can resolve
+        // after a newer one — ignore it so it can't clobber the current selection's results.
+        if (!cancelled) setChannels(data);
       })
-      .catch((err) => setChannelsError(err.message))
-      .finally(() => setLoadingChannels(false));
+      .catch((err) => {
+        if (!cancelled) setChannelsError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingChannels(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [profileId, selectedGenre]);
 
   async function playChannel(channel: Channel) {
@@ -234,15 +235,6 @@ export default function WatchClient({
                         <div className="flex h-full w-full items-center justify-center text-[10px] text-muted">
                           {c.name.slice(0, 1).toUpperCase()}
                         </div>
-                        {c.logo && (
-                          // eslint-disable-next-line @next/next/no-img-element -- portal-hosted logo, proxied
-                          <img
-                            src={c.logo}
-                            alt=""
-                            onError={hideOnError}
-                            className="absolute inset-0 h-full w-full object-contain"
-                          />
-                        )}
                       </div>
                       {c.number && <span className="shrink-0 text-xs text-muted">{c.number}</span>}
                       <span className="truncate">{c.name}</span>

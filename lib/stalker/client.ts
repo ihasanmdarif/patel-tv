@@ -251,33 +251,15 @@ type RawChannel = {
   name: string;
   number?: string | number;
   cmd: string;
-  logo?: string;
   tv_genre_id?: string | number;
 };
 
-// Portal serves logos/screenshots behind the same STB-identity gate (User-Agent + mac
-// cookie) as its API and streams — a browser <img> hitting the raw URL directly gets
-// rejected, so route it through the stream proxy (which already sends STB_USER_AGENT).
-// screenshot_uri/logo often comes back portal-relative (e.g. "/screenshots/x.jpg"), and
-// the proxy route 400s on anything that isn't already an absolute URL, so resolve it
-// against the portal's own origin first.
-function buildImageProxyUrl(config: StalkerProfileConfig, rawUrl: string): string | null {
-  let abs: string;
-  try {
-    abs = new URL(rawUrl, config.portalUrl).toString();
-  } catch {
-    return null;
-  }
-  return `/api/stalker/${config.id}/proxy?rawUrl=${encodeURIComponent(abs)}`;
-}
-
-function toChannel(c: RawChannel, config: StalkerProfileConfig): Channel {
+function toChannel(c: RawChannel): Channel {
   return {
     id: String(c.id),
     name: c.name,
     number: c.number != null ? String(c.number) : null,
     cmd: c.cmd,
-    logo: c.logo ? buildImageProxyUrl(config, c.logo) : null,
     genreId: c.tv_genre_id != null ? String(c.tv_genre_id) : null,
   };
 }
@@ -352,7 +334,7 @@ export async function getChannels(
   return callWithRetry(config, async (token) => {
     return fetchAllPages((page) =>
       fetchChannelPage(config, token, page, genreId).then((r) => ({
-        data: r.data.map((c) => toChannel(c, config)),
+        data: r.data.map((c) => toChannel(c)),
         totalItems: r.totalItems,
       }))
     );
@@ -369,7 +351,7 @@ export async function getChannelsPage(
   return callWithRetry(config, async (token) => {
     const { data, totalItems } = await fetchChannelPage(config, token, page, genreId);
     return {
-      items: data.map((c) => toChannel(c, config)),
+      items: data.map((c) => toChannel(c)),
       page,
       totalItems: totalItems ?? data.length,
     };
@@ -417,19 +399,17 @@ type RawVodItem = {
   id: string | number;
   name: string;
   cmd: string;
-  screenshot_uri?: string;
   category_id?: string | number;
   year?: string | number;
   description?: string;
   series?: unknown[]; // non-empty on portals that flag multi-episode series items this way
 };
 
-function toVodItem(v: RawVodItem, config: StalkerProfileConfig): VodItem {
+function toVodItem(v: RawVodItem): VodItem {
   return {
     id: String(v.id),
     name: v.name,
     cmd: v.cmd,
-    logo: v.screenshot_uri ? buildImageProxyUrl(config, v.screenshot_uri) : null,
     categoryId: v.category_id != null ? String(v.category_id) : null,
     isSeries: Array.isArray(v.series) && v.series.length > 0,
     year: v.year != null ? String(v.year) : null,
@@ -464,7 +444,7 @@ export async function getVodItems(
   return callWithRetry(config, async (token) => {
     return fetchAllPages((page) =>
       fetchVodPage(config, token, page, categoryId).then((r) => ({
-        data: r.data.map((v) => toVodItem(v, config)),
+        data: r.data.map((v) => toVodItem(v)),
         totalItems: r.totalItems,
       }))
     );

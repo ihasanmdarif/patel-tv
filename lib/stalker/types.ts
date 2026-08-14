@@ -26,7 +26,6 @@ export type Channel = {
   name: string;
   number: string | null;
   cmd: string;
-  logo: string | null;
   genreId: string | null;
 };
 
@@ -44,7 +43,6 @@ export type VodItem = {
   id: string;
   name: string;
   cmd: string;
-  logo: string | null;
   categoryId: string | null;
   isSeries: boolean;
   year: string | null;

@@ -45,7 +45,6 @@ model Favorite {
   contentId   String
   cmd         String?
   title       String
-  logo        String?
   createdAt   DateTime    @default(now())
 
   @@unique([profileId, contentType, contentId])
@@ -61,7 +60,6 @@ model WatchHistory {
   seriesId    String?
   title       String
   seriesTitle String?
-  logo        String?
   positionSec Int         @default(0)
   durationSec Int?
   cmd         String

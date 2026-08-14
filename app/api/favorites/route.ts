@@ -40,7 +40,6 @@ export async function POST(req: NextRequest) {
       contentId,
       title,
       cmd: (body.cmd as string | undefined) ?? null,
-      logo: (body.logo as string | undefined) ?? null,
     },
     update: {},
   });

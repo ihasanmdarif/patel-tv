@@ -21,7 +21,6 @@ export default function WatchPageClient({
   title,
   seriesId,
   seriesTitle,
-  logo,
   resumeSec,
   durationSec,
 }: {
@@ -33,7 +32,6 @@ export default function WatchPageClient({
   title: string;
   seriesId: string | null;
   seriesTitle: string | null;
-  logo: string | null;
   resumeSec: number;
   durationSec: number | null;
 }) {
@@ -96,7 +94,6 @@ export default function WatchPageClient({
         seriesId,
         title,
         seriesTitle,
-        logo,
         cmd,
         positionSec: Math.floor(positionSec),
         durationSec: Math.floor(totalDurationSec),
@@ -122,7 +119,6 @@ export default function WatchPageClient({
           title: nextEpisode.title,
           seriesId,
           seriesTitle,
-          logo,
         })
       );
     }
@@ -136,7 +132,7 @@ export default function WatchPageClient({
       await fetch("/api/favorites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profileId, contentType: "MOVIE", contentId, cmd, title, logo }),
+        body: JSON.stringify({ profileId, contentType: "MOVIE", contentId, cmd, title }),
       });
     } else {
       await fetch(

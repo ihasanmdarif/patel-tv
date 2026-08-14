@@ -7,20 +7,15 @@ export default async function SeriesDetailPage({
   searchParams,
 }: {
   params: Promise<{ vodId: string }>;
-  searchParams: Promise<{ title?: string; logo?: string }>;
+  searchParams: Promise<{ title?: string }>;
 }) {
-  const [{ vodId }, { title, logo }] = await Promise.all([params, searchParams]);
+  const [{ vodId }, { title }] = await Promise.all([params, searchParams]);
   const profileId = await getActiveProfileId();
   if (!profileId) redirect("/settings?tab=sources");
 
   return (
     <div className="p-6 sm:p-8">
-      <SeriesDetail
-        profileId={profileId}
-        vodId={vodId}
-        title={title ?? "Series"}
-        logo={logo ?? null}
-      />
+      <SeriesDetail profileId={profileId} vodId={vodId} title={title ?? "Series"} />
     </div>
   );
 }
