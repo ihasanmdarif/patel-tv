@@ -1,0 +1,14 @@
+{
+  "name": "patel-tv-remux-service",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Standalone FFmpeg remux-to-HLS service for patel-tv, deployed separately from the main Vercel-hosted Next.js app.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "@ffprobe-installer/ffprobe": "^2.1.2",
+    "ffmpeg-static": "^5.3.0"
+  }
+}

@@ -1,0 +1,29 @@
+# Convenience for local dev / self-hosting both pieces together. In production the
+# main app is expected to deploy to Vercel and REMUX_SERVICE_URL to point at
+# whatever host runs the `remux` service below — this file is not the primary deploy
+# path, just a way to run the split architecture end-to-end without two terminals.
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      REMUX_SERVICE_URL: http://remux:8790
+    depends_on:
+      - remux
+
+  remux:
+    build: ./remux-service
+    restart: unless-stopped
+    ports:
+      - "8790:8790"
+    environment:
+      REMUX_SERVICE_TOKEN: ${REMUX_SERVICE_TOKEN}
+    volumes:
+      - remux-cache:/app/data/remux
+
+volumes:
+  remux-cache:

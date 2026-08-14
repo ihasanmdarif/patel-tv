@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import WatchClient from "@/components/WatchClient";
 
-export default async function WatchPage({
+export default async function LiveProfilePage({
   params,
 }: {
   params: Promise<{ profileId: string }>;

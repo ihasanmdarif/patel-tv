@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { loadProfileConfig } from "@/lib/stalker/load-profile";
 import { resolveStream, StalkerError } from "@/lib/stalker/client";
+import { STB_USER_AGENT } from "@/lib/stalker/user-agent";
+import { isSafeTarget } from "@/lib/net/safe-target";
 
 export const dynamic = "force-dynamic";
-
-const STB_USER_AGENT =
-  "Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3";
 
 function buildProxyUrl(profileId: string, target: string): string {
   return `/api/stalker/${profileId}/proxy?rawUrl=${encodeURIComponent(target)}`;
@@ -32,15 +31,6 @@ function rewritePlaylist(text: string, baseUrl: string, profileId: string): stri
     .join("\n");
 }
 
-const PRIVATE_HOST_PATTERN =
-  /^(localhost|127\.0\.0\.1|0\.0\.0\.0|::1|169\.254\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/i;
-
-function isSafeTarget(url: URL): boolean {
-  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
-  if (PRIVATE_HOST_PATTERN.test(url.hostname)) return false;
-  return true;
-}
-
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ profileId: string }> }
@@ -55,10 +45,13 @@ export async function GET(
   const config = await loadProfileConfig(profileId);
   if (!config) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
 
+  const typeParam = req.nextUrl.searchParams.get("type");
+  const streamType = typeParam === "vod" ? "vod" : "itv";
+
   let targetUrl: URL;
   if (channelCmd) {
     try {
-      const resolved = await resolveStream(config, channelCmd);
+      const resolved = await resolveStream(config, channelCmd, streamType);
       targetUrl = new URL(resolved.url);
     } catch (err) {
       const status = err instanceof StalkerError ? 502 : 500;

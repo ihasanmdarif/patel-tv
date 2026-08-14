@@ -1,0 +1,36 @@
+# Runs the remux service + a Cloudflare Tunnel sidecar so it's reachable from the
+# public internet (needed so Vercel can call REMUX_SERVICE_URL) without opening any
+# inbound port on this host — same "Cloudflare Tunnel for public reachability"
+# pattern already used for the portal shim (see CLAUDE_CLOUDFLARE.MD).
+#
+# One-time setup (Cloudflare Zero Trust dashboard → Networks → Tunnels):
+#   1. Create a tunnel, name it whatever (e.g. "patel-tv-remux").
+#   2. Public Hostname tab → add a route: your chosen hostname → Service
+#      "http://remux:8790" (the service name below, on the docker network).
+#   3. Copy the tunnel token into .env here as CLOUDFLARE_TUNNEL_TOKEN.
+#   4. Set REMUX_SERVICE_URL on Vercel to https://<that hostname>.
+#
+# CI pushes a built image to ghcr.io/ihasanmdarif/patel-tv-remux:latest — this file
+# both builds locally (`docker compose build`) and can just pull that image
+# (`docker compose pull && docker compose up -d`) without needing source on the host.
+services:
+  remux:
+    image: ghcr.io/ihasanmdarif/patel-tv-remux:latest
+    build: .
+    restart: unless-stopped
+    environment:
+      REMUX_SERVICE_TOKEN: ${REMUX_SERVICE_TOKEN}
+    volumes:
+      - remux-cache:/app/data/remux
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - remux
+
+volumes:
+  remux-cache:

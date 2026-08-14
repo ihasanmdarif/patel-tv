@@ -42,3 +42,6 @@ CLAUDE_CLOUDFLARE.MD
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local FFmpeg remux session cache
+/.remux-cache

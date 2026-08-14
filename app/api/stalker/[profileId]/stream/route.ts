@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { loadProfileConfig } from "@/lib/stalker/load-profile";
-import { resolveStream, StalkerError } from "@/lib/stalker/client";
+import { StalkerError } from "@/lib/stalker/client";
+import { resolvePlayableStream } from "@/lib/remux/resolve";
 
 export async function GET(
   req: NextRequest,
@@ -16,9 +17,8 @@ export async function GET(
   if (!config) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
 
   try {
-    const resolved = await resolveStream(config, channelCmd);
-    const proxyUrl = `/api/stalker/${profileId}/proxy?channelCmd=${encodeURIComponent(channelCmd)}`;
-    return NextResponse.json({ url: proxyUrl, kind: resolved.kind });
+    const resolved = await resolvePlayableStream(profileId, config, channelCmd, "itv");
+    return NextResponse.json(resolved);
   } catch (err) {
     const status = err instanceof StalkerError ? 502 : 500;
     const message = err instanceof Error ? err.message : "Unknown error";

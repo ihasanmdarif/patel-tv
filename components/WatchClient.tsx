@@ -50,6 +50,48 @@ export default function WatchClient({
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [streamError, setStreamError] = useState<string | null>(null);
   const [resolving, setResolving] = useState(false);
+  const [search, setSearch] = useState("");
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    fetch(`/api/favorites?profileId=${profileId}&contentType=CHANNEL`)
+      .then((res) => res.json())
+      .then((data: Array<{ contentId: string }>) => setFavoriteIds(new Set(data.map((f) => f.contentId))))
+      .catch(() => {});
+  }, [profileId]);
+
+  async function toggleFavorite(channel: Channel) {
+    const isFav = favoriteIds.has(channel.id);
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (isFav) next.delete(channel.id);
+      else next.add(channel.id);
+      return next;
+    });
+    if (isFav) {
+      await fetch(
+        `/api/favorites?profileId=${profileId}&contentType=CHANNEL&contentId=${channel.id}`,
+        { method: "DELETE" }
+      );
+    } else {
+      await fetch("/api/favorites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profileId,
+          contentType: "CHANNEL",
+          contentId: channel.id,
+          cmd: channel.cmd,
+          title: channel.name,
+          logo: channel.logo,
+        }),
+      });
+    }
+  }
+
+  const visibleChannels = channels.filter((c) =>
+    !search || c.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   useEffect(() => {
     fetch(`/api/stalker/${profileId}/genres`)
@@ -147,27 +189,60 @@ export default function WatchClient({
         </aside>
 
         <main className="flex flex-1 overflow-hidden">
-          <div className="w-72 overflow-y-auto border-r border-surface-border py-2">
-            {loadingChannels && (
-              <p className="flex items-center gap-2 px-4 py-2 text-sm text-muted">
-                <Spinner /> Loading channels...
-              </p>
-            )}
-            {channelsError && <p className="px-4 py-2 text-sm text-danger">{channelsError}</p>}
-            {channels.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => playChannel(c)}
-                className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition ${
-                  activeChannelId === c.id
-                    ? "bg-accent/10 font-medium text-accent"
-                    : "hover:bg-surface-border/50"
-                }`}
-              >
-                {c.number && <span className="w-6 shrink-0 text-xs text-muted">{c.number}</span>}
-                <span className="truncate">{c.name}</span>
-              </button>
-            ))}
+          <div className="flex w-72 flex-col border-r border-surface-border">
+            <div className="p-2">
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search channels..."
+                className="w-full rounded-[10px] border border-surface-border bg-bg-tertiary px-3 py-1.5 text-sm outline-none transition focus:border-accent"
+              />
+            </div>
+            <div className="flex-1 overflow-y-auto pb-2">
+              {loadingChannels && (
+                <p className="flex items-center gap-2 px-4 py-2 text-sm text-muted">
+                  <Spinner /> Loading channels...
+                </p>
+              )}
+              {channelsError && <p className="px-4 py-2 text-sm text-danger">{channelsError}</p>}
+              {visibleChannels.map((c) => {
+                const isActive = activeChannelId === c.id;
+                const isFav = favoriteIds.has(c.id);
+                return (
+                  <div
+                    key={c.id}
+                    className={`group flex w-full items-center gap-2 border-l-[3px] px-3 py-2 text-sm transition ${
+                      isActive
+                        ? "border-accent bg-accent-dim font-medium text-accent"
+                        : "border-transparent hover:bg-bg-hover"
+                    }`}
+                  >
+                    <button
+                      onClick={() => playChannel(c)}
+                      className="flex flex-1 items-center gap-2 text-left"
+                    >
+                      {c.number && <span className="w-6 shrink-0 text-xs text-muted">{c.number}</span>}
+                      <span className="truncate">{c.name}</span>
+                    </button>
+                    <button
+                      onClick={() => toggleFavorite(c)}
+                      aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
+                      className={`shrink-0 transition ${isFav ? "text-accent" : "text-muted opacity-0 group-hover:opacity-100"}`}
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill={isFav ? "currentColor" : "none"}
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        className="h-3.5 w-3.5"
+                      >
+                        <path d="M12 20.5s-7-4.35-9.5-8.6C.7 8.2 2.4 4.5 6 4.5c2 0 3.5 1.1 6 3.5 2.5-2.4 4-3.5 6-3.5 3.6 0 5.3 3.7 3.5 7.4C19 16.15 12 20.5 12 20.5Z" />
+                      </svg>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           <div className="flex flex-1 items-center justify-center bg-black p-4">

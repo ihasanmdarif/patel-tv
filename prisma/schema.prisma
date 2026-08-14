@@ -31,3 +31,43 @@ model Profile {
   updatedAt       DateTime  @updatedAt
   lastConnectedAt DateTime?
 }
+
+enum ContentType {
+  CHANNEL
+  MOVIE
+  EPISODE
+}
+
+model Favorite {
+  id          String      @id @default(cuid())
+  profileId   String
+  contentType ContentType
+  contentId   String
+  cmd         String?
+  title       String
+  logo        String?
+  createdAt   DateTime    @default(now())
+
+  @@unique([profileId, contentType, contentId])
+  @@index([profileId, contentType])
+}
+
+model WatchHistory {
+  id          String      @id @default(cuid())
+  profileId   String
+  // Live channels don't get history rows, only VOD/series playback.
+  contentType ContentType
+  contentId   String
+  seriesId    String?
+  title       String
+  seriesTitle String?
+  logo        String?
+  positionSec Int         @default(0)
+  durationSec Int?
+  cmd         String
+  updatedAt   DateTime    @updatedAt
+  createdAt   DateTime    @default(now())
+
+  @@unique([profileId, contentType, contentId])
+  @@index([profileId, updatedAt])
+}

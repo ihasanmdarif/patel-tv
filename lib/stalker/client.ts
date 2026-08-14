@@ -1,10 +1,18 @@
 import { createHash } from "node:crypto";
 import { getCachedToken, setCachedToken, clearCachedToken } from "./token-cache";
 import { getCachedBase, setCachedBase } from "./api-base-cache";
-import type { StalkerProfileConfig, Genre, Channel, ResolvedStream } from "./types";
-
-const STB_USER_AGENT =
-  "Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3";
+import { STB_USER_AGENT } from "./user-agent";
+import type {
+  StalkerProfileConfig,
+  Genre,
+  Channel,
+  ResolvedStream,
+  VodCategory,
+  VodItem,
+  SeriesSeason,
+  SeriesEpisode,
+  EpgProgram,
+} from "./types";
 
 function sha256Upper(input: string): string {
   return createHash("sha256").update(input).digest("hex").toUpperCase();
@@ -263,61 +271,260 @@ async function fetchChannelPage(
 // The unfiltered/"All" listing can span 100+ pages; fetching them one at a time turns into a
 // minute-plus wait. Fetch the first page to learn the page size and total count, then fetch the
 // rest concurrently (bounded, so we don't hammer the portal) instead of walking pages serially.
+// Shared by itv (getChannels) and vod (getVodItems) — same get_ordered_list pagination shape.
 const PAGE_FETCH_CONCURRENCY = 8;
 const MAX_PAGES = 1000; // safety net against an unexpected payload shape looping forever
+
+async function fetchAllPages<T>(
+  fetchPage: (page: number) => Promise<{ data: T[]; totalItems?: number }>
+): Promise<T[]> {
+  const first = await fetchPage(1);
+  const items = [...first.data];
+  const pageSize = first.data.length;
+  const totalItems = first.totalItems ?? pageSize;
+
+  if (pageSize === 0 || items.length >= totalItems) return items;
+
+  const totalPages = Math.min(Math.ceil(totalItems / pageSize), MAX_PAGES);
+  const remainingPages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
+
+  const results: T[][] = new Array(remainingPages.length);
+  let next = 0;
+  async function worker() {
+    for (;;) {
+      const i = next++;
+      if (i >= remainingPages.length) return;
+      const { data } = await fetchPage(remainingPages[i]);
+      results[i] = data;
+      if (data.length === 0) return; // portal ran out of pages early
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(PAGE_FETCH_CONCURRENCY, remainingPages.length) }, worker)
+  );
+
+  for (const data of results) {
+    if (!data) continue;
+    items.push(...data);
+  }
+  return items;
+}
 
 export async function getChannels(
   config: StalkerProfileConfig,
   genreId?: string
 ): Promise<Channel[]> {
   return callWithRetry(config, async (token) => {
-    const first = await fetchChannelPage(config, token, 1, genreId);
-    const channels = first.data.map(toChannel);
-    const pageSize = first.data.length;
-    const totalItems = first.totalItems ?? pageSize;
-
-    if (pageSize === 0 || channels.length >= totalItems) return channels;
-
-    const totalPages = Math.min(Math.ceil(totalItems / pageSize), MAX_PAGES);
-    const remainingPages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
-
-    const results: RawChannel[][] = new Array(remainingPages.length);
-    let next = 0;
-    async function worker() {
-      for (;;) {
-        const i = next++;
-        if (i >= remainingPages.length) return;
-        const { data } = await fetchChannelPage(config, token, remainingPages[i], genreId);
-        results[i] = data;
-        if (data.length === 0) return; // portal ran out of pages early
-      }
-    }
-    await Promise.all(
-      Array.from({ length: Math.min(PAGE_FETCH_CONCURRENCY, remainingPages.length) }, worker)
+    return fetchAllPages((page) =>
+      fetchChannelPage(config, token, page, genreId).then((r) => ({
+        data: r.data.map(toChannel),
+        totalItems: r.totalItems,
+      }))
     );
-
-    for (const data of results) {
-      if (!data) continue;
-      for (const c of data) channels.push(toChannel(c));
-    }
-    return channels;
   });
 }
 
 export async function resolveStream(
   config: StalkerProfileConfig,
-  channelCmd: string
+  cmd: string,
+  type: "itv" | "vod" = "itv"
 ): Promise<ResolvedStream> {
   return callWithRetry(config, async (token) => {
     const js = (await stalkerRequest(
       config,
-      { type: "itv", action: "create_link", cmd: channelCmd, force_ch_link_check: "0" },
+      { type, action: "create_link", cmd, force_ch_link_check: "0" },
       token
     )) as { cmd?: string };
     if (!js.cmd) throw new StalkerError("Portal did not return a stream link");
     // Stalker wraps the real URL, e.g. "ffmpeg http://host/stream.ts"; strip the launcher prefix.
-    const url = js.cmd.replace(/^ffmpeg\s+/i, "").trim();
+    const url = js.cmd.replace(/^(ffmpeg|auto)\s+/i, "").trim();
     const kind = url.includes(".m3u8") ? "hls" : "ts";
     return { url, kind };
   });
+}
+
+// ---- VOD (movies/series) -------------------------------------------------------
+// Stalker exposes VOD through the same module shape as itv (get_categories /
+// get_ordered_list / create_link), just with type=vod. Whether a given portal
+// separates "series" from flat movie categories, and what params a series'
+// season/episode listing needs, varies by deployment — getSeriesInfo degrades to
+// an empty array rather than throwing, same as the known-broken radio module.
+
+export async function getVodCategories(config: StalkerProfileConfig): Promise<VodCategory[]> {
+  return callWithRetry(config, async (token) => {
+    const js = (await stalkerRequest(
+      config,
+      { type: "vod", action: "get_categories" },
+      token
+    )) as Array<{ id: string | number; title: string }>;
+    return js.map((c) => ({ id: String(c.id), title: c.title }));
+  });
+}
+
+type RawVodItem = {
+  id: string | number;
+  name: string;
+  cmd: string;
+  screenshot_uri?: string;
+  category_id?: string | number;
+  year?: string | number;
+  description?: string;
+  series?: unknown[]; // non-empty on portals that flag multi-episode series items this way
+};
+
+function toVodItem(v: RawVodItem): VodItem {
+  return {
+    id: String(v.id),
+    name: v.name,
+    cmd: v.cmd,
+    logo: v.screenshot_uri ?? null,
+    categoryId: v.category_id != null ? String(v.category_id) : null,
+    isSeries: Array.isArray(v.series) && v.series.length > 0,
+    year: v.year != null ? String(v.year) : null,
+    description: v.description ?? null,
+  };
+}
+
+async function fetchVodPage(
+  config: StalkerProfileConfig,
+  token: string,
+  page: number,
+  categoryId?: string
+): Promise<{ data: RawVodItem[]; totalItems?: number }> {
+  const params: Record<string, string> = {
+    type: "vod",
+    action: "get_ordered_list",
+    p: String(page),
+  };
+  if (categoryId) params.category = categoryId;
+
+  const js = (await stalkerRequest(config, params, token)) as {
+    data: RawVodItem[];
+    total_items?: number;
+  };
+  return { data: js.data ?? [], totalItems: js.total_items };
+}
+
+export async function getVodItems(
+  config: StalkerProfileConfig,
+  categoryId?: string
+): Promise<VodItem[]> {
+  return callWithRetry(config, async (token) => {
+    return fetchAllPages((page) =>
+      fetchVodPage(config, token, page, categoryId).then((r) => ({
+        data: r.data.map(toVodItem),
+        totalItems: r.totalItems,
+      }))
+    );
+  });
+}
+
+export async function getSeriesInfo(
+  config: StalkerProfileConfig,
+  vodId: string
+): Promise<SeriesSeason[]> {
+  try {
+    return await callWithRetry(config, async (token) => {
+      const js = (await stalkerRequest(
+        config,
+        { type: "vod", action: "get_ordered_list", movie_id: vodId },
+        token
+      )) as { data?: Array<Record<string, unknown>> };
+      const rows = js.data ?? [];
+      const seasons = new Map<string, SeriesSeason>();
+      for (const row of rows) {
+        const seasonId = String(row.season_id ?? row.season ?? "1");
+        const seasonTitle = String(row.season_name ?? `Season ${seasonId}`);
+        const episode: SeriesEpisode = {
+          id: String(row.id ?? row.episode_id ?? ""),
+          title: String(row.name ?? row.episode_name ?? seasonTitle),
+          cmd: String(row.cmd ?? ""),
+          seasonId,
+        };
+        if (!episode.cmd) continue;
+        const season = seasons.get(seasonId) ?? { id: seasonId, title: seasonTitle, episodes: [] };
+        season.episodes.push(episode);
+        seasons.set(seasonId, season);
+      }
+      return Array.from(seasons.values());
+    });
+  } catch {
+    // Season/episode param shape is portal-specific and unverified — degrade to
+    // an empty list rather than surfacing a portal error to the Series detail UI.
+    return [];
+  }
+}
+
+// ---- EPG -------------------------------------------------------------------------
+// Portal-dependent and unverified (some Stalker deployments return no usable EPG
+// data at all) — both helpers swallow errors and return [] so the Guide page can
+// treat "no data" as a first-class, non-error state.
+
+type RawEpgProgram = {
+  id: string | number;
+  ch_id?: string | number;
+  name?: string;
+  descr?: string;
+  description?: string;
+  start_timestamp?: number | string;
+  stop_timestamp?: number | string;
+  time?: string;
+  time_to?: string;
+};
+
+function toEpgProgram(channelId: string, e: RawEpgProgram): EpgProgram {
+  const start = e.start_timestamp != null ? Number(e.start_timestamp) : Date.parse(e.time ?? "") / 1000;
+  const stop = e.stop_timestamp != null ? Number(e.stop_timestamp) : Date.parse(e.time_to ?? "") / 1000;
+  return {
+    id: String(e.id),
+    channelId: e.ch_id != null ? String(e.ch_id) : channelId,
+    title: e.name ?? "",
+    description: e.descr ?? e.description ?? null,
+    startTimestamp: Number.isFinite(start) ? start : 0,
+    stopTimestamp: Number.isFinite(stop) ? stop : 0,
+  };
+}
+
+export async function getEpg(
+  config: StalkerProfileConfig,
+  channelId: string,
+  size = 10
+): Promise<EpgProgram[]> {
+  try {
+    return await callWithRetry(config, async (token) => {
+      const js = (await stalkerRequest(
+        config,
+        { type: "itv", action: "get_short_epg", ch_id: channelId, size: String(size) },
+        token
+      )) as RawEpgProgram[] | { data?: RawEpgProgram[] };
+      const rows = Array.isArray(js) ? js : (js.data ?? []);
+      return rows.map((e) => toEpgProgram(channelId, e));
+    });
+  } catch {
+    return [];
+  }
+}
+
+export async function getFullEpg(
+  config: StalkerProfileConfig,
+  period = 24
+): Promise<EpgProgram[]> {
+  try {
+    return await callWithRetry(config, async (token) => {
+      const js = (await stalkerRequest(
+        config,
+        { type: "itv", action: "get_epg_info", period: String(period) },
+        token
+      )) as Record<string, RawEpgProgram[]> | { data?: Record<string, RawEpgProgram[]> };
+      const byChannel = "data" in js && js.data ? js.data : (js as Record<string, RawEpgProgram[]>);
+      const out: EpgProgram[] = [];
+      for (const [channelId, rows] of Object.entries(byChannel)) {
+        if (!Array.isArray(rows)) continue;
+        for (const e of rows) out.push(toEpgProgram(channelId, e));
+      }
+      return out;
+    });
+  } catch {
+    return [];
+  }
 }

@@ -1,5 +1,9 @@
 allowBuilds:
   '@prisma/engines': true
-  better-sqlite3: true
+  # Only an optional peer of @prisma/client's SQLite driver adapter — this app uses
+  # @prisma/adapter-pg (Postgres) and never imports better-sqlite3, so there's no
+  # need to compile its native binary (and doing so requires a Python/node-gyp
+  # toolchain the production image doesn't otherwise need).
+  better-sqlite3: false
   prisma: true
   unrs-resolver: true

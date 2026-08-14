@@ -1,0 +1,9 @@
+node_modules
+.next
+.git
+.remux-cache
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+.serena
