@@ -1,0 +1,72 @@
+name: deploy
+
+# Builds and pushes both images (main app + remux-service) on every push to main,
+# then optionally deploys the whole stack to the self-hosted box (docker-compose.yml)
+# over SSH.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/patel-tv:latest
+            ghcr.io/${{ github.repository_owner }}/patel-tv:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max,scope=app
+
+  build-remux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./remux-service
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/patel-tv-remux:latest
+            ghcr.io/${{ github.repository_owner }}/patel-tv-remux:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max,scope=remux
+
+  # Optional — only runs if DEPLOY_HOST is configured in repo secrets. SSHes into the
+  # self-hosted box and pulls+restarts the whole stack via docker-compose.yml.
+  deploy:
+    needs: [build-app, build-remux]
+    runs-on: ubuntu-latest
+    if: ${{ secrets.DEPLOY_HOST != '' }}
+    steps:
+      - name: Pull and restart on host
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd ${{ secrets.DEPLOY_PATH }}
+            docker compose pull
+            docker compose up -d

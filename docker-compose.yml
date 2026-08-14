@@ -1,13 +1,21 @@
-# Convenience for local dev / self-hosting both pieces together. In production the
-# main app is expected to deploy to Vercel and REMUX_SERVICE_URL to point at
-# whatever host runs the `remux` service below — this file is not the primary deploy
-# path, just a way to run the split architecture end-to-end without two terminals.
+# Full self-host: app + remux-service + a single Cloudflare Tunnel exposing the app
+# publicly. Everything runs on one Docker host (e.g. a VM/LXC on Proxmox) — remux
+# stays internal-only (the app reaches it at http://remux:8790 over the compose
+# network), only the app needs a public route.
+#
+# One-time Cloudflare setup (Zero Trust dashboard → Networks → Tunnels):
+#   1. Create a tunnel.
+#   2. Public Hostname → add a route: your chosen hostname → Service "http://app:3000".
+#   3. Copy the tunnel token into .env as CLOUDFLARE_TUNNEL_TOKEN.
+#
+# CI pushes built images to ghcr.io/ihasanmdarif/patel-tv:latest and
+# .../patel-tv-remux:latest — `docker compose pull && docker compose up -d` updates
+# both without needing to build on this host.
 services:
   app:
+    image: ghcr.io/ihasanmdarif/patel-tv:latest
     build: .
     restart: unless-stopped
-    ports:
-      - "3000:3000"
     env_file:
       - .env
     environment:
@@ -16,14 +24,22 @@ services:
       - remux
 
   remux:
+    image: ghcr.io/ihasanmdarif/patel-tv-remux:latest
     build: ./remux-service
     restart: unless-stopped
-    ports:
-      - "8790:8790"
     environment:
       REMUX_SERVICE_TOKEN: ${REMUX_SERVICE_TOKEN}
     volumes:
       - remux-cache:/app/data/remux
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - app
 
 volumes:
   remux-cache:

@@ -1,7 +1,6 @@
-# Alt/self-host option — Vercel is the primary deploy target for this app (see
-# README/CLAUDE_CLOUDFLARE.MD). The FFmpeg remux piece lives in remux-service/ as a
-# separate deployable and is NOT part of this image; set REMUX_SERVICE_URL and
-# REMUX_SERVICE_TOKEN at runtime to point this app at wherever that's running.
+# Main app image — see docker-compose.yml for the full self-host stack (this + the
+# FFmpeg remux-service/ image + a Cloudflare Tunnel). REMUX_SERVICE_URL and
+# REMUX_SERVICE_TOKEN must be set at runtime to point this app at that service.
 FROM node:22-bookworm-slim
 
 WORKDIR /app
