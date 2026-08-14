@@ -145,14 +145,14 @@ export default function WatchPageClient({
   return (
     <div className="flex flex-1 flex-col gap-4 bg-black p-4 sm:p-6">
       <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-lg font-semibold text-foreground">{title}</h1>
-          {seriesTitle && <p className="text-sm text-muted">{seriesTitle}</p>}
+        <div className="min-w-0">
+          <h1 className="truncate font-heading text-lg font-semibold text-foreground">{title}</h1>
+          {seriesTitle && <p className="truncate text-sm text-muted">{seriesTitle}</p>}
         </div>
         {contentType && contentId && (
           <button
             onClick={toggleFavorite}
-            className={`rounded-[10px] px-3 py-1.5 text-sm font-medium transition ${
+            className={`shrink-0 rounded-[10px] px-3 py-1.5 text-sm font-medium transition ${
               favorited ? "bg-accent-dim text-accent" : "border border-surface-border text-muted"
             }`}
           >

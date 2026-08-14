@@ -154,13 +154,13 @@ export default function WatchClient({
       <header className="flex items-center gap-3 border-b border-surface-border bg-surface px-4 py-3">
         <Link
           href="/profiles"
-          className="flex items-center gap-1 text-sm text-muted transition hover:text-accent"
+          className="flex shrink-0 items-center gap-1 text-sm text-muted transition hover:text-accent"
         >
           <IconArrowLeft className="h-4 w-4" />
           Profiles
         </Link>
-        <div className="h-4 w-px bg-surface-border" />
-        <h1 className="text-sm font-semibold">{profileName}</h1>
+        <div className="h-4 w-px shrink-0 bg-surface-border" />
+        <h1 className="truncate text-sm font-semibold">{profileName}</h1>
       </header>
 
       <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
