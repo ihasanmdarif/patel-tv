@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/session";
 
+// Managing sources (portal URL, MAC address, device identity) is admin-only — a
+// restricted viewer editing/deleting a Profile would bypass their own access grants.
 export async function GET() {
+  const user = await getCurrentUser();
+  if (user?.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const profiles = await prisma.profile.findMany({ orderBy: { createdAt: "desc" } });
   return NextResponse.json(profiles);
 }
 
 export async function POST(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (user?.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const body = await req.json();
   const {
     name,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import VideoPlayer from "./VideoPlayer";
 
@@ -29,6 +29,13 @@ function Spinner() {
   );
 }
 
+// Live TV has no resume point, so watch time is tracked as periodic deltas (via
+// VideoPlayer's timeupdate-driven onProgress) accumulated into a running total, flushed
+// to /api/history roughly this often — matching the VOD autosave cadence.
+const CHANNEL_FLUSH_THRESHOLD_SEC = 10;
+
+type ChannelWatchState = { channel: Channel; lastTick: number | null; accumulated: number };
+
 export default function WatchClient({
   profileId,
   profileName,
@@ -40,7 +47,9 @@ export default function WatchClient({
   const [genresError, setGenresError] = useState<string | null>(null);
   const [loadingGenres, setLoadingGenres] = useState(true);
 
-  const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
+  // undefined = nothing picked yet (no fetch); null = "All genres" explicitly picked;
+  // string = a specific genre id.
+  const [selectedGenre, setSelectedGenre] = useState<string | null | undefined>(undefined);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [channelsError, setChannelsError] = useState<string | null>(null);
   const [loadingChannels, setLoadingChannels] = useState(false);
@@ -51,6 +60,7 @@ export default function WatchClient({
   const [resolving, setResolving] = useState(false);
   const [search, setSearch] = useState("");
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const channelWatchRef = useRef<ChannelWatchState | null>(null);
 
   useEffect(() => {
     fetch(`/api/favorites?profileId=${profileId}&contentType=CHANNEL`)
@@ -103,6 +113,10 @@ export default function WatchClient({
   }, [profileId]);
 
   useEffect(() => {
+    // Nothing picked yet — don't fetch the full channel list until the user chooses a
+    // genre (or explicitly picks "All genres"). selectedGenre never reverts to undefined
+    // once set, so channels just stays at its initial [] here.
+    if (selectedGenre === undefined) return;
     let cancelled = false;
     // Re-fires whenever the selected genre changes, so the loading flag must reset synchronously here.
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -130,7 +144,60 @@ export default function WatchClient({
     };
   }, [profileId, selectedGenre]);
 
+  function flushChannelWatch(channel: Channel, elapsedSec: number) {
+    if (elapsedSec <= 0) return;
+    void fetch("/api/history", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        profileId,
+        contentType: "CHANNEL",
+        contentId: channel.id,
+        title: channel.name,
+        cmd: channel.cmd,
+        elapsedSec,
+      }),
+    }).catch(() => {});
+  }
+
+  function flushPendingChannelWatch() {
+    const state = channelWatchRef.current;
+    if (state && state.accumulated > 0) {
+      flushChannelWatch(state.channel, Math.floor(state.accumulated));
+    }
+    channelWatchRef.current = null;
+  }
+
+  // Fires on every VideoPlayer timeupdate tick (i.e. only while actually playing) —
+  // measures wall-clock time between ticks rather than trusting currentTime/duration,
+  // since those are meaningless for a live stream.
+  function handleChannelProgress() {
+    const state = channelWatchRef.current;
+    if (!state) return;
+    const now = Date.now();
+    if (state.lastTick == null) {
+      state.lastTick = now;
+      return;
+    }
+    // Cap a single tick's delta so a backgrounded/suspended tab waking up can't
+    // silently inflate watch hours with a multi-minute jump.
+    state.accumulated += Math.min((now - state.lastTick) / 1000, 30);
+    state.lastTick = now;
+    if (state.accumulated >= CHANNEL_FLUSH_THRESHOLD_SEC) {
+      const toFlush = Math.floor(state.accumulated);
+      state.accumulated -= toFlush;
+      flushChannelWatch(state.channel, toFlush);
+    }
+  }
+
+  useEffect(() => {
+    return () => flushPendingChannelWatch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- flush-on-unmount only, reads live refs
+  }, []);
+
   async function playChannel(channel: Channel) {
+    flushPendingChannelWatch();
+    channelWatchRef.current = { channel, lastTick: null, accumulated: 0 };
     setActiveChannelId(channel.id);
     setStreamError(null);
     setPlayer(null);
@@ -209,6 +276,9 @@ export default function WatchClient({
               />
             </div>
             <div className="flex-1 overflow-y-auto pb-2">
+              {selectedGenre === undefined && !loadingChannels && (
+                <p className="px-4 py-2 text-sm text-muted">Choose a genre to see channels.</p>
+              )}
               {loadingChannels && (
                 <p className="flex items-center gap-2 px-4 py-2 text-sm text-muted">
                   <Spinner /> Loading channels...
@@ -266,7 +336,12 @@ export default function WatchClient({
                 <Spinner /> Resolving stream...
               </p>
             ) : player ? (
-              <VideoPlayer key={activeChannelId} src={player.url} kind={player.kind} />
+              <VideoPlayer
+                key={activeChannelId}
+                src={player.url}
+                kind={player.kind}
+                onProgress={handleChannelProgress}
+              />
             ) : streamError ? (
               <p className="text-sm text-danger">{streamError}</p>
             ) : (

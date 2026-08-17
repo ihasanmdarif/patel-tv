@@ -30,6 +30,34 @@ model Profile {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   lastConnectedAt DateTime?
+  accessGrants    ProfileAccess[]
+}
+
+// Per-user restriction on which Profile (IPTV source) a viewer may use. No
+// ProfileRestriction row for a user = unrestricted (every profile) — this is opt-in, so
+// admins always have every profile and a viewer isn't locked out until an admin
+// explicitly restricts them. Once restricted, ProfileAccess rows are the allow-list
+// (zero of them means "restricted to nothing", a deliberately different state from
+// "never restricted" — that distinction is exactly what ProfileRestriction's presence
+// captures). See lib/profile-access.ts.
+model ProfileRestriction {
+  userId String @id
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profile_restriction")
+}
+
+model ProfileAccess {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileId String
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, profileId])
+  @@index([userId])
+  @@index([profileId])
 }
 
 enum ContentType {
@@ -58,12 +86,13 @@ model WatchHistory {
   userId      String
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   profileId   String
-  // Live channels don't get history rows, only VOD/series playback.
   contentType ContentType
   contentId   String
   seriesId    String?
   title       String
   seriesTitle String?
+  // MOVIE/EPISODE: absolute resume position. CHANNEL: cumulative seconds watched (live
+  // TV has no resume point, so this field is repurposed as a running total instead).
   positionSec Int         @default(0)
   durationSec Int?
   cmd         String
@@ -88,8 +117,10 @@ model User {
   banExpires    DateTime?
   sessions      Session[]
   accounts      Account[]
-  favorites     Favorite[]
-  watchHistory  WatchHistory[]
+  favorites          Favorite[]
+  watchHistory       WatchHistory[]
+  profileAccess      ProfileAccess[]
+  profileRestriction ProfileRestriction?
 
   @@unique([email])
   @@map("user")

@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function LoginPage() {
   const userCount = await prisma.user.count();
-  if (userCount === 0) redirect("/setup");
+  if (userCount === 0) redirect("/admin");
 
   return (
     <div className="flex min-h-full flex-1 items-center justify-center p-6">

@@ -3,6 +3,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { admin } from "better-auth/plugins";
 import { prisma } from "@/lib/prisma";
+import { roles } from "@/lib/auth-roles";
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: "postgresql" }),
@@ -11,8 +12,8 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     // No self-serve signup flow — accounts are created by an admin (or the one-time
-    // /setup bootstrap), so there's no email deliverability requirement here.
+    // /admin bootstrap), so there's no email deliverability requirement here.
     autoSignIn: true,
   },
-  plugins: [admin()],
+  plugins: [admin({ defaultRole: "viewer", roles })],
 });

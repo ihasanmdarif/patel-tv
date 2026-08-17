@@ -2,10 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { clearCachedToken } from "@/lib/stalker/token-cache";
 import { clearCachedBase } from "@/lib/stalker/api-base-cache";
+import { getCurrentUser } from "@/lib/session";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
+// Managing sources is admin-only — see app/api/profiles/route.ts.
 export async function GET(_req: NextRequest, { params }: RouteParams) {
+  const user = await getCurrentUser();
+  if (user?.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const { id } = await params;
   const profile = await prisma.profile.findUnique({ where: { id } });
   if (!profile) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -13,6 +18,9 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 }
 
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
+  const user = await getCurrentUser();
+  if (user?.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const { id } = await params;
   const body = await req.json();
   const {
@@ -83,6 +91,9 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 }
 
 export async function DELETE(_req: NextRequest, { params }: RouteParams) {
+  const user = await getCurrentUser();
+  if (user?.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const { id } = await params;
   await prisma.profile.delete({ where: { id } }).catch(() => null);
   clearCachedToken(id);

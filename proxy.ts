@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
-// /setup + /api/setup are the one-time bootstrap page/route (only reachable while zero
-// users exist — they self-guard server-side) and must stay open pre-auth. /api/auth/*
+// /admin must stay open pre-auth: with zero users it renders the first-admin bootstrap
+// modal itself (self-guarded server-side); with a session it re-checks role there.
+// /api/setup backs that bootstrap and self-disables once any user exists. /api/auth/*
 // are Better Auth's own sign-in/sign-out/session endpoints, which by definition run
 // unauthenticated.
-const PUBLIC_PATHS = new Set(["/login", "/setup", "/api/setup"]);
+const PUBLIC_PATHS = new Set(["/login", "/admin", "/api/setup"]);
 
 export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

@@ -2,47 +2,51 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 
-const TABS = [
-  { id: "sources", label: "Sources" },
-  { id: "player", label: "Player" },
-  { id: "users", label: "Users" },
-] as const;
+const TAB_ORDER = ["sources", "player", "admin"] as const;
+const TAB_LABEL: Record<(typeof TAB_ORDER)[number], string> = {
+  sources: "Sources",
+  player: "Player",
+  admin: "Admin",
+};
 
 export default function SettingsTabs({
   sources,
   player,
-  users,
+  admin,
 }: {
-  sources: React.ReactNode;
+  sources?: React.ReactNode;
   player: React.ReactNode;
-  users?: React.ReactNode;
+  admin?: React.ReactNode;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const available: Record<(typeof TAB_ORDER)[number], React.ReactNode> = { sources, player, admin };
+  const tabs = TAB_ORDER.filter((id) => available[id]);
+
   const requested = searchParams.get("tab");
-  const active = requested === "player" ? "player" : requested === "users" && users ? "users" : "sources";
-  const tabs = users ? TABS : TABS.filter((t) => t.id !== "users");
+  const active =
+    requested && tabs.includes(requested as (typeof TAB_ORDER)[number])
+      ? (requested as (typeof TAB_ORDER)[number])
+      : tabs[0];
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex gap-1 border-b border-surface-border">
         {tabs.map((tab) => (
           <button
-            key={tab.id}
-            onClick={() => router.replace(`/settings?tab=${tab.id}`)}
+            key={tab}
+            onClick={() => router.replace(`/settings?tab=${tab}`)}
             className={`px-4 py-2 text-sm font-medium transition ${
-              active === tab.id
+              active === tab
                 ? "border-b-2 border-accent text-accent"
                 : "text-muted hover:text-foreground"
             }`}
           >
-            {tab.label}
+            {TAB_LABEL[tab]}
           </button>
         ))}
       </div>
-      {active === "sources" && sources}
-      {active === "player" && player}
-      {active === "users" && users}
+      {available[active]}
     </div>
   );
 }

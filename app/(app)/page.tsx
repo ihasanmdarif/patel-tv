@@ -73,7 +73,9 @@ export default async function HomePage() {
       : [],
     user
       ? prisma.watchHistory.findMany({
-          where: { userId: user.id, profileId },
+          // Continue Watching is a VOD resume-point rail — CHANNEL rows track cumulative
+          // watch time, not a resume position, and don't belong here.
+          where: { userId: user.id, profileId, contentType: { in: ["MOVIE", "EPISODE"] } },
           orderBy: { updatedAt: "desc" },
           take: 12,
         })
