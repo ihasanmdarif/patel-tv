@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { authClient } from "@/lib/auth-client";
 import { FocusableButton } from "@/components/spatial/FocusableButton";
@@ -16,47 +15,63 @@ function formatUserCode(code: string): string {
 }
 
 export default function TvLoginPage() {
-  const router = useRouter();
   const [status, setStatus] = useState<Status>("requesting");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [userCode, setUserCode] = useState<string | null>(null);
   const [verificationUri, setVerificationUri] = useState<string | null>(null);
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // The built-in POST /device/token (RFC 8628's actual token endpoint) only ever
+  // returns a bearer access_token, never a session cookie — useless to this
+  // cookie-session web app (see lib/device-session-plugin.ts for the full story).
+  // So polling here uses the read-only GET /device status check instead, and once
+  // approved, hands off to our own /device/adopt endpoint to actually sign in.
+  async function adoptSession(deviceCode: string) {
+    const res = await fetch("/api/auth/device/adopt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ device_code: deviceCode }),
+    });
+    if (!res.ok) {
+      setStatus("error");
+      setErrorMessage("Something went wrong signing you in.");
+      return;
+    }
+    setStatus("success");
+    // Hard navigation, not router.push() — client-side push()/refresh() of the
+    // RSC stream right after a fresh sign-in reliably threw "Cannot write/close
+    // a CLOSED writable stream" here. A full navigation sidesteps that stream
+    // entirely and guarantees the fresh session cookie is sent on the next request.
+    window.location.href = "/";
+  }
+
   // Plain (non-memoized) function declarations, not useCallback: schedulePoll
   // recurses on itself, which needs the hoisted-declaration semantics of `function`
   // (a `const` arrow assigned via useCallback can't reference itself before the
   // assignment completes).
-  function schedulePoll(deviceCode: string, intervalSec: number) {
+  function schedulePoll(deviceCode: string, userCodeValue: string, intervalSec: number) {
     pollTimer.current = setTimeout(async () => {
-      const { data, error } = await authClient.device.token({
-        grant_type: "urn:ietf:params:oauth:grant-type:device_code",
-        device_code: deviceCode,
-        client_id: CLIENT_ID,
-      });
-      if (data) {
-        setStatus("success");
-        router.push("/");
-        router.refresh();
+      const { data, error } = await authClient.device({ query: { user_code: userCodeValue } });
+      if (error) {
+        // The declared error schema for this endpoint only lists "invalid_request",
+        // but the handler also throws "expired_token" at runtime — compare as a
+        // plain string rather than the (too-narrow) inferred literal type.
+        const code = String(error.error);
+        setStatus(code === "expired_token" ? "expired" : "error");
+        if (code !== "expired_token") {
+          setErrorMessage(error.error_description ?? "Something went wrong.");
+        }
         return;
       }
-      switch (error?.error) {
-        case "authorization_pending":
-          schedulePoll(deviceCode, intervalSec);
+      switch (data?.status) {
+        case "approved":
+          await adoptSession(deviceCode);
           return;
-        case "slow_down":
-          // RFC 8628 §3.5 — back off when told we're polling too fast.
-          schedulePoll(deviceCode, intervalSec + 5);
-          return;
-        case "expired_token":
-          setStatus("expired");
-          return;
-        case "access_denied":
+        case "denied":
           setStatus("denied");
           return;
         default:
-          setStatus("error");
-          setErrorMessage(error?.error_description ?? "Something went wrong.");
+          schedulePoll(deviceCode, userCodeValue, intervalSec);
       }
     }, intervalSec * 1000);
   }
@@ -75,7 +90,7 @@ export default function TvLoginPage() {
     setUserCode(data.user_code);
     setVerificationUri(data.verification_uri_complete);
     setStatus("polling");
-    schedulePoll(data.device_code, data.interval);
+    schedulePoll(data.device_code, data.user_code, data.interval);
   }
 
   useEffect(() => {

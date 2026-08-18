@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useNativeFieldKeys } from "@/components/spatial/useNativeFieldKeys";
 
 export default function AdminBootstrapModal() {
-  const router = useRouter();
+  const nativeFieldProps = useNativeFieldKeys();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,8 +23,8 @@ export default function AdminBootstrapModal() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "Failed to create admin account");
-      router.push("/admin");
-      router.refresh();
+      // Hard navigation, not router.push() — see app/tv-login/page.tsx for why.
+      window.location.href = "/admin";
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create admin account");
     } finally {
@@ -52,6 +52,7 @@ export default function AdminBootstrapModal() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="rounded-lg border border-surface-border bg-transparent px-3 py-2 text-sm text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
+            {...nativeFieldProps}
           />
         </label>
         <label className="flex flex-col gap-1.5 text-xs font-medium text-muted">
@@ -62,6 +63,7 @@ export default function AdminBootstrapModal() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="rounded-lg border border-surface-border bg-transparent px-3 py-2 text-sm text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
+            {...nativeFieldProps}
           />
         </label>
         <label className="flex flex-col gap-1.5 text-xs font-medium text-muted">
@@ -73,6 +75,7 @@ export default function AdminBootstrapModal() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="rounded-lg border border-surface-border bg-transparent px-3 py-2 text-sm text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
+            {...nativeFieldProps}
           />
         </label>
         {error && <p className="text-sm text-danger">{error}</p>}

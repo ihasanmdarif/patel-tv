@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import { FocusableLink } from "@/components/spatial/FocusableLink";
+import { useNativeFieldKeys } from "@/components/spatial/useNativeFieldKeys";
 
 export default function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
+  const nativeFieldProps = useNativeFieldKeys();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -22,8 +24,8 @@ export default function LoginForm() {
       setSubmitting(false);
       return;
     }
-    router.push(searchParams.get("next") || "/");
-    router.refresh();
+    // Hard navigation, not router.push() — see app/tv-login/page.tsx for why.
+    window.location.href = searchParams.get("next") || "/";
   }
 
   return (
@@ -41,6 +43,7 @@ export default function LoginForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="rounded-lg border border-surface-border bg-transparent px-3 py-2 text-sm text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
+          {...nativeFieldProps}
         />
       </label>
       <label className="flex flex-col gap-1.5 text-xs font-medium text-muted">
@@ -51,6 +54,7 @@ export default function LoginForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="rounded-lg border border-surface-border bg-transparent px-3 py-2 text-sm text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
+          {...nativeFieldProps}
         />
       </label>
       {error && <p className="text-sm text-danger">{error}</p>}
@@ -61,6 +65,12 @@ export default function LoginForm() {
       >
         {submitting ? "Signing in..." : "Sign in"}
       </button>
+      <FocusableLink
+        href="/tv-login"
+        className="rounded-lg border border-surface-border px-4 py-2 text-center text-sm font-medium text-muted transition hover:border-accent hover:text-foreground"
+      >
+        Sign in with your phone instead
+      </FocusableLink>
     </form>
   );
 }

@@ -4,6 +4,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { admin, deviceAuthorization } from "better-auth/plugins";
 import { prisma } from "@/lib/prisma";
 import { roles } from "@/lib/auth-roles";
+import { deviceSessionPlugin } from "@/lib/device-session-plugin";
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: "postgresql" }),
@@ -19,5 +20,8 @@ export const auth = betterAuth({
     admin({ defaultRole: "viewer", roles }),
     // TV remote-control device pairing (RFC 8628) — see app/tv-login and app/pair.
     deviceAuthorization({ verificationUri: "/pair" }),
+    // /device/token alone never sets a session cookie (see device-session-plugin.ts) —
+    // this adds the endpoint that actually signs the TV in.
+    deviceSessionPlugin(),
   ],
 });
