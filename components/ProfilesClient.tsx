@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { FocusableButton } from "@/components/spatial/FocusableButton";
+import { FocusableLink } from "@/components/spatial/FocusableLink";
+import { FocusableSection } from "@/components/spatial/FocusableSection";
+import { useNativeFieldKeys } from "@/components/spatial/useNativeFieldKeys";
 
 type Profile = {
   id: string;
@@ -168,9 +171,11 @@ function Spinner() {
 function DeviceIdentityFields({
   form,
   setForm,
+  nativeFieldProps,
 }: {
   form: ProfileForm;
   setForm: (form: ProfileForm) => void;
+  nativeFieldProps: ReturnType<typeof useNativeFieldKeys>;
 }) {
   const [pasted, setPasted] = useState("");
   const inputClass =
@@ -184,6 +189,7 @@ function DeviceIdentityFields({
           placeholder={placeholder}
           value={form[key]}
           onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+          {...nativeFieldProps}
           className={inputClass}
         />
       </label>
@@ -208,6 +214,7 @@ function DeviceIdentityFields({
               const parsed = parseEnvBlock(e.target.value);
               if (Object.keys(parsed).length > 0) setForm({ ...form, ...parsed });
             }}
+            {...nativeFieldProps}
             className={`${inputClass} font-mono text-xs`}
           />
         </label>
@@ -239,6 +246,7 @@ export default function ProfilesClient({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tests, setTests] = useState<Record<string, TestState>>({});
+  const nativeFieldProps = useNativeFieldKeys();
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<ProfileForm>(EMPTY_FORM);
@@ -363,6 +371,7 @@ export default function ProfilesClient({
               placeholder="Living Room"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
+              {...nativeFieldProps}
               className="rounded-lg border border-surface-border bg-transparent px-3 py-2 text-sm text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
             />
           </label>
@@ -373,6 +382,7 @@ export default function ProfilesClient({
               placeholder="00:1A:79:XX:XX:XX"
               value={form.macAddress}
               onChange={(e) => setForm({ ...form, macAddress: e.target.value })}
+              {...nativeFieldProps}
               className="rounded-lg border border-surface-border bg-transparent px-3 py-2 text-sm text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
             />
           </label>
@@ -383,6 +393,7 @@ export default function ProfilesClient({
               placeholder="http://portal.example.com/c/"
               value={form.portalUrl}
               onChange={(e) => setForm({ ...form, portalUrl: e.target.value })}
+              {...nativeFieldProps}
               className="rounded-lg border border-surface-border bg-transparent px-3 py-2 text-sm text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
             />
           </label>
@@ -392,6 +403,7 @@ export default function ProfilesClient({
               placeholder="From STB System Info or box sticker"
               value={form.serialNumber}
               onChange={(e) => setForm({ ...form, serialNumber: e.target.value })}
+              {...nativeFieldProps}
               className="rounded-lg border border-surface-border bg-transparent px-3 py-2 text-sm text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
             />
           </label>
@@ -401,11 +413,12 @@ export default function ProfilesClient({
               placeholder="Any notes about this subscription"
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              {...nativeFieldProps}
               className="rounded-lg border border-surface-border bg-transparent px-3 py-2 text-sm text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
             />
           </label>
         </div>
-        <DeviceIdentityFields form={form} setForm={setForm} />
+        <DeviceIdentityFields form={form} setForm={setForm} nativeFieldProps={nativeFieldProps} />
         {error && <p className="text-sm text-danger">{error}</p>}
         <button
           type="submit"
@@ -416,7 +429,7 @@ export default function ProfilesClient({
         </button>
       </form>
 
-      <div className="flex flex-col gap-3">
+      <FocusableSection as="div" className="flex flex-col gap-3">
         {profiles.length === 0 && (
           <p className="rounded-2xl border border-dashed border-surface-border p-6 text-center text-sm text-muted">
             No profiles yet. Add one above.
@@ -439,6 +452,7 @@ export default function ProfilesClient({
                       required
                       value={editForm.name}
                       onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                      {...nativeFieldProps}
                       className="rounded-lg border border-surface-border bg-transparent px-3 py-2 text-sm text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
                     />
                   </label>
@@ -448,6 +462,7 @@ export default function ProfilesClient({
                       required
                       value={editForm.macAddress}
                       onChange={(e) => setEditForm({ ...editForm, macAddress: e.target.value })}
+                      {...nativeFieldProps}
                       className="rounded-lg border border-surface-border bg-transparent px-3 py-2 text-sm text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
                     />
                   </label>
@@ -457,6 +472,7 @@ export default function ProfilesClient({
                       required
                       value={editForm.portalUrl}
                       onChange={(e) => setEditForm({ ...editForm, portalUrl: e.target.value })}
+                      {...nativeFieldProps}
                       className="rounded-lg border border-surface-border bg-transparent px-3 py-2 text-sm text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
                     />
                   </label>
@@ -466,6 +482,7 @@ export default function ProfilesClient({
                       placeholder="From STB System Info or box sticker"
                       value={editForm.serialNumber}
                       onChange={(e) => setEditForm({ ...editForm, serialNumber: e.target.value })}
+                      {...nativeFieldProps}
                       className="rounded-lg border border-surface-border bg-transparent px-3 py-2 text-sm text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
                     />
                   </label>
@@ -474,11 +491,12 @@ export default function ProfilesClient({
                     <input
                       value={editForm.notes}
                       onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                      {...nativeFieldProps}
                       className="rounded-lg border border-surface-border bg-transparent px-3 py-2 text-sm text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
                     />
                   </label>
                 </div>
-                <DeviceIdentityFields form={editForm} setForm={setEditForm} />
+                <DeviceIdentityFields form={editForm} setForm={setEditForm} nativeFieldProps={nativeFieldProps} />
                 {editError && <p className="text-sm text-danger">{editError}</p>}
                 <div className="flex gap-2">
                   <button
@@ -531,41 +549,41 @@ export default function ProfilesClient({
                   )}
                 </div>
               </div>
-              <div className="flex shrink-0 gap-2">
-                <button
-                  onClick={() => handleTest(p.id)}
+              <FocusableSection as="div" className="flex shrink-0 gap-2">
+                <FocusableButton
+                  onActivate={() => handleTest(p.id)}
                   disabled={test.status === "testing"}
                   className="flex items-center gap-1.5 rounded-lg border border-surface-border px-3 py-1.5 text-sm font-medium transition hover:border-accent hover:text-accent disabled:opacity-50"
                 >
                   {test.status === "testing" ? <Spinner /> : <IconBolt className="h-3.5 w-3.5" />}
                   Test
-                </button>
-                <button
-                  onClick={() => startEdit(p)}
+                </FocusableButton>
+                <FocusableButton
+                  onActivate={() => startEdit(p)}
                   aria-label="Edit profile"
                   className="flex items-center justify-center rounded-lg border border-surface-border p-2 text-muted transition hover:border-accent hover:text-accent"
                 >
                   <IconPencil className="h-3.5 w-3.5" />
-                </button>
-                <Link
+                </FocusableButton>
+                <FocusableLink
                   href={`/live/${p.id}`}
                   className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground transition hover:bg-accent-hover"
                 >
                   <IconPlay className="h-3.5 w-3.5" />
                   Watch
-                </Link>
-                <button
-                  onClick={() => handleDelete(p.id)}
+                </FocusableLink>
+                <FocusableButton
+                  onActivate={() => handleDelete(p.id)}
                   aria-label="Delete profile"
                   className="flex items-center justify-center rounded-lg border border-surface-border p-2 text-muted transition hover:border-danger hover:text-danger"
                 >
                   <IconTrash className="h-3.5 w-3.5" />
-                </button>
-              </div>
+                </FocusableButton>
+              </FocusableSection>
             </div>
           );
         })}
-      </div>
+      </FocusableSection>
     </div>
   );
 }

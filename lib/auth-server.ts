@@ -1,7 +1,7 @@
 import "server-only";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { admin } from "better-auth/plugins";
+import { admin, deviceAuthorization } from "better-auth/plugins";
 import { prisma } from "@/lib/prisma";
 import { roles } from "@/lib/auth-roles";
 
@@ -15,5 +15,9 @@ export const auth = betterAuth({
     // /admin bootstrap), so there's no email deliverability requirement here.
     autoSignIn: true,
   },
-  plugins: [admin({ defaultRole: "viewer", roles })],
+  plugins: [
+    admin({ defaultRole: "viewer", roles }),
+    // TV remote-control device pairing (RFC 8628) — see app/tv-login and app/pair.
+    deviceAuthorization({ verificationUri: "/pair" }),
+  ],
 });

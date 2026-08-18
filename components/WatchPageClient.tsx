@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import VideoPlayer from "./VideoPlayer";
 import { buildWatchUrl } from "@/lib/watch-url";
 import { loadPlayerPrefs } from "@/lib/player-prefs";
+import { FocusableButton } from "@/components/spatial/FocusableButton";
 
 type ContentType = "MOVIE" | "EPISODE" | null;
 type SeriesEpisode = { id: string; title: string; cmd: string; seasonId: string };
@@ -150,14 +151,14 @@ export default function WatchPageClient({
           {seriesTitle && <p className="truncate text-sm text-muted">{seriesTitle}</p>}
         </div>
         {contentType && contentId && (
-          <button
-            onClick={toggleFavorite}
+          <FocusableButton
+            onActivate={toggleFavorite}
             className={`shrink-0 rounded-[10px] px-3 py-1.5 text-sm font-medium transition ${
               favorited ? "bg-accent-dim text-accent" : "border border-surface-border text-muted"
             }`}
           >
             {favorited ? "★ Favorited" : "☆ Favorite"}
-          </button>
+          </FocusableButton>
         )}
       </div>
 
@@ -170,6 +171,7 @@ export default function WatchPageClient({
           startAt={resumeSec}
           onProgress={handleProgress}
           onEnded={handleEnded}
+          onBack={() => router.back()}
         />
       )}
 
@@ -180,12 +182,12 @@ export default function WatchPageClient({
       )}
 
       {nextEpisode && (
-        <button
-          onClick={handleEnded}
+        <FocusableButton
+          onActivate={handleEnded}
           className="self-start rounded-[10px] bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition hover:bg-accent-hover"
         >
           Next: {nextEpisode.title}
-        </button>
+        </FocusableButton>
       )}
     </div>
   );

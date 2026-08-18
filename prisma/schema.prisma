@@ -121,9 +121,34 @@ model User {
   watchHistory       WatchHistory[]
   profileAccess      ProfileAccess[]
   profileRestriction ProfileRestriction?
+  deviceCodes        DeviceCode[]
 
   @@unique([email])
   @@map("user")
+}
+
+// TV device-pairing flow (RFC 8628 device authorization grant), driven by Better
+// Auth's device-authorization plugin — see lib/auth-server.ts. A TV requests a code
+// (userId null, status "pending"), a signed-in phone/desktop claims it by visiting
+// /pair?user_code=... (binds userId) and then approves or denies it; the TV polls
+// /api/auth/device/token until the code leaves "pending".
+model DeviceCode {
+  id              String    @id @default(cuid())
+  deviceCode      String
+  userCode        String
+  userId          String?
+  user            User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt       DateTime
+  status          String
+  lastPolledAt    DateTime?
+  pollingInterval Int?
+  clientId        String?
+  scope           String?
+
+  @@unique([deviceCode])
+  @@unique([userCode])
+  @@index([userId])
+  @@map("device_code")
 }
 
 model Session {

@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import MovieCard from "./MovieCard";
 import { buildWatchUrl } from "@/lib/watch-url";
+import { FocusableButton } from "@/components/spatial/FocusableButton";
+import { FocusableSection } from "@/components/spatial/FocusableSection";
+import { useNativeFieldKeys } from "@/components/spatial/useNativeFieldKeys";
 
 type VodCategory = { id: string; title: string };
 type VodItem = {
@@ -33,6 +36,7 @@ export default function VodBrowser({
   const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const nativeFieldProps = useNativeFieldKeys();
 
   useEffect(() => {
     fetch(`/api/stalker/${profileId}/vod/categories`)
@@ -103,6 +107,7 @@ export default function VodBrowser({
         <select
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
+          {...nativeFieldProps}
           className="rounded-[10px] border border-surface-border bg-bg-tertiary px-3 py-2 text-sm outline-none focus:border-accent"
         >
           <option value="">All categories</option>
@@ -116,16 +121,17 @@ export default function VodBrowser({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search..."
+          {...nativeFieldProps}
           className="min-w-48 rounded-[10px] border border-surface-border bg-bg-tertiary px-3 py-2 text-sm outline-none focus:border-accent"
         />
-        <button
-          onClick={() => setFavoritesOnly((v) => !v)}
+        <FocusableButton
+          onActivate={() => setFavoritesOnly((v) => !v)}
           className={`rounded-[10px] px-3 py-2 text-sm font-medium transition ${
             favoritesOnly ? "bg-accent-dim text-accent" : "border border-surface-border text-muted"
           }`}
         >
           Favorites only
-        </button>
+        </FocusableButton>
       </div>
 
       {loading && <p className="text-sm text-muted">Loading...</p>}
@@ -134,7 +140,7 @@ export default function VodBrowser({
         <p className="text-sm text-muted">Nothing to show here.</p>
       )}
 
-      <div className="flex flex-wrap gap-4">
+      <FocusableSection as="div" className="flex flex-wrap gap-4">
         {filtered.slice(0, visibleCount).map((item) => (
           <MovieCard
             key={item.id}
@@ -155,15 +161,15 @@ export default function VodBrowser({
             }
           />
         ))}
-      </div>
+      </FocusableSection>
 
       {visibleCount < filtered.length && (
-        <button
-          onClick={() => setVisibleCount((v) => v + BATCH_SIZE)}
+        <FocusableButton
+          onActivate={() => setVisibleCount((v) => v + BATCH_SIZE)}
           className="self-center rounded-[10px] border border-surface-border px-4 py-2 text-sm font-medium text-muted transition hover:border-accent hover:text-accent"
         >
           Load more
-        </button>
+        </FocusableButton>
       )}
     </div>
   );

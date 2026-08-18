@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import { FocusableButton } from "./spatial/FocusableButton";
 
 function IconLogout(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -22,13 +23,13 @@ export default function LogoutButton() {
   }
 
   return (
-    <button
-      onClick={handleLogout}
+    <FocusableButton
+      onActivate={handleLogout}
       title="Log out"
       className="flex w-full items-center justify-center gap-2 rounded-lg border border-surface-border px-3 py-1.5 text-sm font-medium text-muted transition hover:border-accent hover:text-accent sm:justify-start"
     >
       <IconLogout className="h-4 w-4 shrink-0" />
       <span className="hidden sm:inline">Log out</span>
-    </button>
+    </FocusableButton>
   );
 }

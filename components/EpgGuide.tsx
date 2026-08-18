@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { FocusableButton } from "@/components/spatial/FocusableButton";
+import { FocusableSection } from "@/components/spatial/FocusableSection";
 
 type Channel = { id: string; name: string; number: string | null };
 type EpgProgram = { id: string; title: string; startTimestamp: number; stopTimestamp: number };
@@ -85,25 +87,25 @@ export default function EpgGuide({ profileId }: { profileId: string }) {
     <div className="flex flex-col gap-6 p-6 sm:p-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-heading text-2xl font-semibold">Guide</h1>
-        <div className="flex items-center gap-3 text-sm">
-          <button
-            onClick={() => setPage((p) => p - 1)}
+        <FocusableSection as="div" className="flex items-center gap-3 text-sm">
+          <FocusableButton
+            onActivate={() => setPage((p) => p - 1)}
             disabled={!canGoPrev}
             className="rounded-lg border border-surface-border px-3 py-1.5 font-medium transition enabled:hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
             Prev
-          </button>
+          </FocusableButton>
           <span className="text-muted">
             Page {page} of {totalPages}
           </span>
-          <button
-            onClick={() => setPage((p) => p + 1)}
+          <FocusableButton
+            onActivate={() => setPage((p) => p + 1)}
             disabled={!canGoNext}
             className="rounded-lg border border-surface-border px-3 py-1.5 font-medium transition enabled:hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
             Next
-          </button>
-        </div>
+          </FocusableButton>
+        </FocusableSection>
       </div>
       {Object.keys(epgByChannel).length >= channels.length && !hasAnyEpg && (
         <p className="text-sm text-muted">

@@ -6,11 +6,12 @@ import { getSessionCookie } from "better-auth/cookies";
 // modal itself (self-guarded server-side); with a session it re-checks role there.
 // /api/setup backs that bootstrap and self-disables once any user exists. /api/auth/*
 // are Better Auth's own sign-in/sign-out/session endpoints, which by definition run
-// unauthenticated.
-const PUBLIC_PATHS = new Set(["/login", "/admin", "/api/setup"]);
+// unauthenticated. /tv-login is the TV device-pairing screen — it's requesting a
+// session, so by definition it can't already have one.
+const PUBLIC_PATHS = new Set(["/login", "/admin", "/api/setup", "/tv-login"]);
 
 export default function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, search } = request.nextUrl;
   if (PUBLIC_PATHS.has(pathname) || pathname.startsWith("/api/auth/")) {
     return NextResponse.next();
   }
@@ -25,7 +26,9 @@ export default function proxy(request: NextRequest) {
   }
 
   const loginUrl = new URL("/login", request.url);
-  loginUrl.searchParams.set("next", pathname);
+  // Preserve the query string too — e.g. /pair?user_code=... needs it after
+  // signing in, not just the bare path.
+  loginUrl.searchParams.set("next", pathname + search);
   return NextResponse.redirect(loginUrl);
 }
 

@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { buildWatchUrl } from "@/lib/watch-url";
+import { FocusableButton } from "@/components/spatial/FocusableButton";
+import { FocusableLink } from "@/components/spatial/FocusableLink";
+import { FocusableSection } from "@/components/spatial/FocusableSection";
 
 type SeriesEpisode = { id: string; title: string; cmd: string; seasonId: string };
 type SeriesSeason = { id: string; title: string; episodes: SeriesEpisode[] };
@@ -50,20 +52,20 @@ export default function SeriesDetail({
         </p>
       )}
 
-      <div className="flex flex-col gap-2">
+      <FocusableSection as="div" className="flex flex-col gap-2">
         {seasons?.map((season) => (
           <div key={season.id} className="rounded-lg border border-surface-border" style={{ borderRadius: "var(--radius-md)" }}>
-            <button
-              onClick={() => setOpenSeasonId(openSeasonId === season.id ? null : season.id)}
+            <FocusableButton
+              onActivate={() => setOpenSeasonId(openSeasonId === season.id ? null : season.id)}
               className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium"
             >
               {season.title}
               <span className="text-muted">{season.episodes.length} episodes</span>
-            </button>
+            </FocusableButton>
             {openSeasonId === season.id && (
-              <div className="flex flex-col border-t border-surface-border">
+              <FocusableSection as="div" className="flex flex-col border-t border-surface-border">
                 {season.episodes.map((ep) => (
-                  <Link
+                  <FocusableLink
                     key={ep.id}
                     href={buildWatchUrl({
                       cmd: ep.cmd,
@@ -77,13 +79,13 @@ export default function SeriesDetail({
                     className="px-4 py-2.5 text-sm transition hover:bg-bg-hover"
                   >
                     {ep.title}
-                  </Link>
+                  </FocusableLink>
                 ))}
-              </div>
+              </FocusableSection>
             )}
           </div>
         ))}
-      </div>
+      </FocusableSection>
     </div>
   );
 }

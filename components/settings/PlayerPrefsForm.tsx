@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { DEFAULT_PLAYER_PREFS, loadPlayerPrefs, savePlayerPrefs, type PlayerPrefs } from "@/lib/player-prefs";
+import { useNativeFieldKeys } from "@/components/spatial/useNativeFieldKeys";
 
 export default function PlayerPrefsForm() {
   const [prefs, setPrefs] = useState<PlayerPrefs>(DEFAULT_PLAYER_PREFS);
   const [loaded, setLoaded] = useState(false);
+  const nativeFieldProps = useNativeFieldKeys();
 
   useEffect(() => {
     // Reads localStorage, which isn't available during SSR — must happen client-side on mount.
@@ -33,6 +35,7 @@ export default function PlayerPrefsForm() {
           type="checkbox"
           checked={prefs.arrowKeysChangeChannel}
           onChange={(e) => update({ arrowKeysChangeChannel: e.target.checked })}
+          {...nativeFieldProps}
           className="h-4 w-4 accent-[var(--accent)]"
         />
       </label>
@@ -45,6 +48,7 @@ export default function PlayerPrefsForm() {
           type="checkbox"
           checked={prefs.autoplayNextEpisode}
           onChange={(e) => update({ autoplayNextEpisode: e.target.checked })}
+          {...nativeFieldProps}
           className="h-4 w-4 accent-[var(--accent)]"
         />
       </label>
@@ -56,6 +60,7 @@ export default function PlayerPrefsForm() {
           max={100}
           value={prefs.defaultVolume}
           onChange={(e) => update({ defaultVolume: Number(e.target.value) })}
+          {...nativeFieldProps}
         />
       </label>
     </div>

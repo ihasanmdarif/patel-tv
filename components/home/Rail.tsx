@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { FocusableLink } from "@/components/spatial/FocusableLink";
+import { FocusableSection } from "@/components/spatial/FocusableSection";
 
 export type RailCard = {
   key: string;
@@ -15,9 +16,9 @@ export default function Rail({ title, cards }: { title: string; cards: RailCard[
   return (
     <section className="flex flex-col gap-3">
       <h2 className="font-heading text-xl font-semibold">{title}</h2>
-      <div className="flex gap-4 overflow-x-auto pb-2">
+      <FocusableSection as="div" className="flex gap-4 overflow-x-auto pb-2">
         {cards.map((card) => (
-          <Link
+          <FocusableLink
             key={card.key}
             href={card.href}
             className="group flex w-40 shrink-0 flex-col gap-2 transition hover:-translate-y-1"
@@ -42,9 +43,9 @@ export default function Rail({ title, cards }: { title: string; cards: RailCard[
               <p className="truncate text-sm font-medium">{card.title}</p>
               {card.subtitle && <p className="truncate text-xs text-muted">{card.subtitle}</p>}
             </div>
-          </Link>
+          </FocusableLink>
         ))}
-      </div>
+      </FocusableSection>
     </section>
   );
 }

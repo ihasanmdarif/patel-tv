@@ -3,6 +3,7 @@ import { getActiveProfileId } from "@/lib/active-profile";
 import { getCurrentUser } from "@/lib/session";
 import { getAllowedProfileIds } from "@/lib/profile-access";
 import { ProfileProvider } from "@/components/ProfileContext";
+import { SpatialNavProvider } from "@/components/spatial/SpatialNavProvider";
 import Sidebar from "@/components/Sidebar";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -16,10 +17,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <ProfileProvider profiles={profiles} activeProfileId={activeProfileId}>
-      <div className="flex min-h-screen flex-1">
-        <Sidebar />
-        <main className="flex min-w-0 flex-1 flex-col">{children}</main>
-      </div>
+      <SpatialNavProvider>
+        <div className="flex min-h-screen flex-1">
+          <Sidebar />
+          <main className="flex min-w-0 flex-1 flex-col">{children}</main>
+        </div>
+      </SpatialNavProvider>
     </ProfileProvider>
   );
 }

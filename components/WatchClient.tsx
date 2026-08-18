@@ -1,8 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import VideoPlayer from "./VideoPlayer";
+import { setFocus } from "@noriginmedia/norigin-spatial-navigation";
+import { FocusableButton } from "@/components/spatial/FocusableButton";
+import { FocusableLink } from "@/components/spatial/FocusableLink";
+import { FocusableSection } from "@/components/spatial/FocusableSection";
+import { useNativeFieldKeys } from "@/components/spatial/useNativeFieldKeys";
+
+const CHANNEL_LIST_FOCUS_KEY = "LIVE_CHANNEL_LIST";
 
 type Genre = { id: string; title: string };
 type Channel = {
@@ -61,6 +67,7 @@ export default function WatchClient({
   const [search, setSearch] = useState("");
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const channelWatchRef = useRef<ChannelWatchState | null>(null);
+  const nativeFieldProps = useNativeFieldKeys();
 
   useEffect(() => {
     fetch(`/api/favorites?profileId=${profileId}&contentType=CHANNEL`)
@@ -219,22 +226,25 @@ export default function WatchClient({
   return (
     <div className="flex h-screen flex-col bg-background">
       <header className="flex items-center gap-3 border-b border-surface-border bg-surface px-4 py-3">
-        <Link
+        <FocusableLink
           href="/profiles"
           className="flex shrink-0 items-center gap-1 text-sm text-muted transition hover:text-accent"
         >
           <IconArrowLeft className="h-4 w-4" />
           Profiles
-        </Link>
+        </FocusableLink>
         <div className="h-4 w-px shrink-0 bg-surface-border" />
         <h1 className="truncate text-sm font-semibold">{profileName}</h1>
       </header>
 
       <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
-        <aside className="flex w-full shrink-0 flex-row gap-1 overflow-x-auto border-b border-surface-border bg-surface/60 p-2 md:w-56 md:flex-col md:gap-0 md:overflow-y-auto md:border-b-0 md:border-r md:py-2">
+        <FocusableSection
+          as="aside"
+          className="flex w-full shrink-0 flex-row gap-1 overflow-x-auto border-b border-surface-border bg-surface/60 p-2 md:w-56 md:flex-col md:gap-0 md:overflow-y-auto md:border-b-0 md:border-r md:py-2"
+        >
           {process.env.NODE_ENV !== "development" && (
-            <button
-              onClick={() => setSelectedGenre(null)}
+            <FocusableButton
+              onActivate={() => setSelectedGenre(null)}
               className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm font-medium transition md:mx-2 md:whitespace-normal ${
                 selectedGenre === null
                   ? "bg-accent/10 text-accent"
@@ -242,7 +252,7 @@ export default function WatchClient({
               }`}
             >
               All genres
-            </button>
+            </FocusableButton>
           )}
           {loadingGenres && (
             <p className="flex shrink-0 items-center gap-2 px-5 py-2 text-sm text-muted">
@@ -251,9 +261,9 @@ export default function WatchClient({
           )}
           {genresError && <p className="shrink-0 px-5 py-2 text-sm text-danger">{genresError}</p>}
           {genres.map((g) => (
-            <button
+            <FocusableButton
               key={g.id}
-              onClick={() => setSelectedGenre(g.id)}
+              onActivate={() => setSelectedGenre(g.id)}
               className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm transition md:mx-2 md:whitespace-normal ${
                 selectedGenre === g.id
                   ? "bg-accent/10 font-medium text-accent"
@@ -261,9 +271,9 @@ export default function WatchClient({
               }`}
             >
               {g.title}
-            </button>
+            </FocusableButton>
           ))}
-        </aside>
+        </FocusableSection>
 
         <main className="flex flex-1 flex-col overflow-hidden md:flex-row">
           <div className="flex max-h-64 w-full shrink-0 flex-col border-b border-surface-border md:h-auto md:max-h-none md:w-72 md:border-b-0 md:border-r">
@@ -272,10 +282,11 @@ export default function WatchClient({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search channels..."
+                {...nativeFieldProps}
                 className="w-full rounded-[10px] border border-surface-border bg-bg-tertiary px-3 py-1.5 text-sm outline-none transition focus:border-accent"
               />
             </div>
-            <div className="flex-1 overflow-y-auto pb-2">
+            <FocusableSection as="div" focusKey={CHANNEL_LIST_FOCUS_KEY} className="flex-1 overflow-y-auto pb-2">
               {selectedGenre === undefined && !loadingChannels && (
                 <p className="px-4 py-2 text-sm text-muted">Choose a genre to see channels.</p>
               )}
@@ -289,16 +300,17 @@ export default function WatchClient({
                 const isActive = activeChannelId === c.id;
                 const isFav = favoriteIds.has(c.id);
                 return (
-                  <div
+                  <FocusableSection
                     key={c.id}
+                    as="div"
                     className={`group flex w-full items-center gap-2 border-l-[3px] px-3 py-2 text-sm transition ${
                       isActive
                         ? "border-accent bg-accent-dim font-medium text-accent"
                         : "border-transparent hover:bg-bg-hover"
                     }`}
                   >
-                    <button
-                      onClick={() => playChannel(c)}
+                    <FocusableButton
+                      onActivate={() => playChannel(c)}
                       className="flex flex-1 items-center gap-2 overflow-hidden text-left"
                     >
                       <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded bg-bg-tertiary">
@@ -308,11 +320,12 @@ export default function WatchClient({
                       </div>
                       {c.number && <span className="shrink-0 text-xs text-muted">{c.number}</span>}
                       <span className="truncate">{c.name}</span>
-                    </button>
-                    <button
-                      onClick={() => toggleFavorite(c)}
+                    </FocusableButton>
+                    <FocusableButton
+                      onActivate={() => toggleFavorite(c)}
                       aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
-                      className={`shrink-0 transition ${isFav ? "text-accent" : "text-muted opacity-0 group-hover:opacity-100"}`}
+                      scrollIntoViewOnFocus={false}
+                      className={`shrink-0 transition ${isFav ? "text-accent" : "text-muted opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"}`}
                     >
                       <svg
                         viewBox="0 0 24 24"
@@ -323,11 +336,11 @@ export default function WatchClient({
                       >
                         <path d="M12 20.5s-7-4.35-9.5-8.6C.7 8.2 2.4 4.5 6 4.5c2 0 3.5 1.1 6 3.5 2.5-2.4 4-3.5 6-3.5 3.6 0 5.3 3.7 3.5 7.4C19 16.15 12 20.5 12 20.5Z" />
                       </svg>
-                    </button>
-                  </div>
+                    </FocusableButton>
+                  </FocusableSection>
                 );
               })}
-            </div>
+            </FocusableSection>
           </div>
 
           <div className="flex min-h-[220px] flex-1 items-center justify-center bg-black p-4">
@@ -341,6 +354,12 @@ export default function WatchClient({
                 src={player.url}
                 kind={player.kind}
                 onProgress={handleChannelProgress}
+                onBack={() => {
+                  flushPendingChannelWatch();
+                  setActiveChannelId(null);
+                  setPlayer(null);
+                  setFocus(CHANNEL_LIST_FOCUS_KEY);
+                }}
               />
             ) : streamError ? (
               <p className="text-sm text-danger">{streamError}</p>

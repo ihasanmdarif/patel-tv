@@ -1,9 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LogoutButton from "./LogoutButton";
 import { useProfileContext } from "./ProfileContext";
+import { FocusableLink } from "./spatial/FocusableLink";
+import { FocusableSection } from "./spatial/FocusableSection";
+import { useNativeFieldKeys } from "./spatial/useNativeFieldKeys";
 
 function IconHome(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -75,6 +77,7 @@ const NAV_LINKS = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { profiles, activeProfileId, setActiveProfile } = useProfileContext();
+  const nativeFieldProps = useNativeFieldKeys();
 
   return (
     <nav
@@ -88,13 +91,13 @@ export default function Sidebar() {
         </span>
       </div>
 
-      <div className="flex flex-1 flex-col gap-1">
+      <FocusableSection as="div" className="flex flex-1 flex-col gap-1" focusKey="SIDEBAR_NAV">
         {NAV_LINKS.map((link) => {
           const isActive =
             link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
           const Icon = link.icon;
           return (
-            <Link
+            <FocusableLink
               key={link.href}
               href={link.href}
               title={link.label}
@@ -112,16 +115,17 @@ export default function Sidebar() {
               />
               <Icon className="h-5 w-5 shrink-0" />
               <span className="hidden sm:inline">{link.label}</span>
-            </Link>
+            </FocusableLink>
           );
         })}
-      </div>
+      </FocusableSection>
 
       <div className="flex flex-col gap-2 px-0 pt-2 sm:px-1">
         {profiles.length > 0 && (
           <select
             value={activeProfileId ?? ""}
             onChange={(e) => setActiveProfile(e.target.value)}
+            {...nativeFieldProps}
             className="hidden w-full rounded-[10px] border border-surface-border bg-bg-tertiary px-2 py-1.5 text-xs text-foreground outline-none transition focus:border-accent sm:block"
           >
             {profiles.map((p) => (
