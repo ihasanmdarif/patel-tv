@@ -101,7 +101,7 @@ export default function Sidebar() {
               key={link.href}
               href={link.href}
               title={link.label}
-              className={`group relative flex items-center justify-center gap-3 rounded-[10px] px-0 py-2.5 text-sm font-medium transition sm:justify-start sm:px-3 ${
+              className={`group relative flex items-center justify-center gap-3 rounded-[10px] px-0 py-3 text-base font-medium transition sm:justify-start sm:px-3 ${
                 isActive
                   ? "bg-accent-dim text-accent"
                   : "text-muted hover:bg-bg-hover hover:text-foreground"
@@ -113,7 +113,7 @@ export default function Sidebar() {
                 }`}
                 style={{ transform: "translateX(-0.75rem)" }}
               />
-              <Icon className="h-5 w-5 shrink-0" />
+              <Icon className="h-6 w-6 shrink-0" />
               <span className="hidden sm:inline">{link.label}</span>
             </FocusableLink>
           );

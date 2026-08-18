@@ -108,7 +108,7 @@ export default function VodBrowser({
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
           {...nativeFieldProps}
-          className="rounded-[10px] border border-surface-border bg-bg-tertiary px-3 py-2 text-sm outline-none focus:border-accent"
+          className="rounded-[10px] border border-surface-border bg-bg-tertiary px-3 py-2.5 text-base outline-none focus:border-accent"
         >
           <option value="">All categories</option>
           {categories.map((c) => (
@@ -122,11 +122,11 @@ export default function VodBrowser({
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search..."
           {...nativeFieldProps}
-          className="min-w-48 rounded-[10px] border border-surface-border bg-bg-tertiary px-3 py-2 text-sm outline-none focus:border-accent"
+          className="min-w-48 rounded-[10px] border border-surface-border bg-bg-tertiary px-3 py-2.5 text-base outline-none focus:border-accent"
         />
         <FocusableButton
           onActivate={() => setFavoritesOnly((v) => !v)}
-          className={`rounded-[10px] px-3 py-2 text-sm font-medium transition ${
+          className={`rounded-[10px] px-3.5 py-2.5 text-base font-medium transition ${
             favoritesOnly ? "bg-accent-dim text-accent" : "border border-surface-border text-muted"
           }`}
         >
@@ -166,7 +166,7 @@ export default function VodBrowser({
       {visibleCount < filtered.length && (
         <FocusableButton
           onActivate={() => setVisibleCount((v) => v + BATCH_SIZE)}
-          className="self-center rounded-[10px] border border-surface-border px-4 py-2 text-sm font-medium text-muted transition hover:border-accent hover:text-accent"
+          className="self-center rounded-[10px] border border-surface-border px-5 py-2.5 text-base font-medium text-muted transition hover:border-accent hover:text-accent"
         >
           Load more
         </FocusableButton>

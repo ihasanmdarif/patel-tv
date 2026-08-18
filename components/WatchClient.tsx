@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import VideoPlayer from "./VideoPlayer";
 import { setFocus } from "@noriginmedia/norigin-spatial-navigation";
 import { FocusableButton } from "@/components/spatial/FocusableButton";
@@ -32,6 +32,71 @@ function Spinner() {
       <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.25" />
       <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
     </svg>
+  );
+}
+
+function IconChevronUp(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
+      <path d="M6 15l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconChevronDown(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
+      <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// Classic STB channel/genre lists hint at overflow with fading chevrons at the scroll
+// edges rather than a visible scrollbar — this tracks whether a list is scrolled away
+// from its top/bottom so those chevrons can be shown only when there's more to see.
+function useScrollEdges(ref: RefObject<HTMLElement | null>, deps: unknown[]) {
+  const [atTop, setAtTop] = useState(true);
+  const [atBottom, setAtBottom] = useState(true);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    function update() {
+      if (!el) return;
+      setAtTop(el.scrollTop <= 1);
+      setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight <= 1);
+    }
+    update();
+    el.addEventListener("scroll", update);
+    window.addEventListener("resize", update);
+    return () => {
+      el.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps controls re-measuring when list content changes
+  }, deps);
+
+  return { atTop, atBottom };
+}
+
+function ScrollEdgeChevrons({ atTop, atBottom }: { atTop: boolean; atBottom: boolean }) {
+  return (
+    <>
+      <div
+        className={`pointer-events-none absolute inset-x-0 top-0 z-10 flex h-7 items-start justify-center bg-gradient-to-b from-surface to-transparent transition-opacity ${
+          atTop ? "opacity-0" : "opacity-100"
+        }`}
+      >
+        <IconChevronUp className="mt-0.5 h-4 w-4 text-muted" />
+      </div>
+      <div
+        className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 flex h-7 items-end justify-center bg-gradient-to-t from-surface to-transparent transition-opacity ${
+          atBottom ? "opacity-0" : "opacity-100"
+        }`}
+      >
+        <IconChevronDown className="mb-0.5 h-4 w-4 text-muted" />
+      </div>
+    </>
   );
 }
 
@@ -68,6 +133,8 @@ export default function WatchClient({
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const channelWatchRef = useRef<ChannelWatchState | null>(null);
   const nativeFieldProps = useNativeFieldKeys();
+  const genreListRef = useRef<HTMLDivElement>(null);
+  const channelListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch(`/api/favorites?profileId=${profileId}&contentType=CHANNEL`)
@@ -107,6 +174,8 @@ export default function WatchClient({
   const visibleChannels = channels.filter((c) =>
     !search || c.name.toLowerCase().includes(search.toLowerCase())
   );
+  const genreEdges = useScrollEdges(genreListRef, [genres.length]);
+  const channelEdges = useScrollEdges(channelListRef, [visibleChannels.length]);
 
   useEffect(() => {
     fetch(`/api/stalker/${profileId}/genres`)
@@ -237,46 +306,48 @@ export default function WatchClient({
         <h1 className="truncate text-sm font-semibold">{profileName}</h1>
       </header>
 
-      <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
-        <FocusableSection
-          as="aside"
-          className="flex w-full shrink-0 flex-row gap-1 overflow-x-auto border-b border-surface-border bg-surface/60 p-2 md:w-56 md:flex-col md:gap-0 md:overflow-y-auto md:border-b-0 md:border-r md:py-2"
-        >
-          {process.env.NODE_ENV !== "development" && (
-            <FocusableButton
-              onActivate={() => setSelectedGenre(null)}
-              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm font-medium transition md:mx-2 md:whitespace-normal ${
-                selectedGenre === null
-                  ? "bg-accent/10 text-accent"
-                  : "text-foreground hover:bg-surface-border/50"
-              }`}
-            >
-              All genres
-            </FocusableButton>
-          )}
-          {loadingGenres && (
-            <p className="flex shrink-0 items-center gap-2 px-5 py-2 text-sm text-muted">
-              <Spinner /> Loading genres...
-            </p>
-          )}
-          {genresError && <p className="shrink-0 px-5 py-2 text-sm text-danger">{genresError}</p>}
-          {genres.map((g) => (
-            <FocusableButton
-              key={g.id}
-              onActivate={() => setSelectedGenre(g.id)}
-              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm transition md:mx-2 md:whitespace-normal ${
-                selectedGenre === g.id
-                  ? "bg-accent/10 font-medium text-accent"
-                  : "text-foreground hover:bg-surface-border/50"
-              }`}
-            >
-              {g.title}
-            </FocusableButton>
-          ))}
-        </FocusableSection>
+      <div className="flex flex-1 flex-col gap-3 overflow-hidden p-3 md:flex-row">
+        <div className="relative flex w-full shrink-0 overflow-hidden rounded-2xl border border-surface-border/60 bg-surface/70 md:w-56 md:flex-col">
+          <FocusableSection
+            as="div"
+            containerRef={genreListRef}
+            className="flex w-full flex-row gap-1 overflow-x-auto p-2 md:flex-col md:gap-0.5 md:overflow-y-auto md:py-3"
+          >
+            {process.env.NODE_ENV !== "development" && (
+              <FocusableButton
+                onActivate={() => setSelectedGenre(null)}
+                focusClassName=""
+                className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2.5 text-left text-base font-medium transition focus:bg-foreground focus:text-background md:mx-2 md:whitespace-normal ${
+                  selectedGenre === null ? "text-accent" : "text-foreground hover:bg-bg-hover"
+                }`}
+              >
+                All genres
+              </FocusableButton>
+            )}
+            {loadingGenres && (
+              <p className="flex shrink-0 items-center gap-2 px-5 py-2 text-sm text-muted">
+                <Spinner /> Loading genres...
+              </p>
+            )}
+            {genresError && <p className="shrink-0 px-5 py-2 text-sm text-danger">{genresError}</p>}
+            {genres.map((g) => (
+              <FocusableButton
+                key={g.id}
+                onActivate={() => setSelectedGenre(g.id)}
+                focusClassName=""
+                className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2.5 text-left text-base transition focus:bg-foreground focus:text-background md:mx-2 md:whitespace-normal ${
+                  selectedGenre === g.id ? "font-medium text-accent" : "text-foreground hover:bg-bg-hover"
+                }`}
+              >
+                {g.title}
+              </FocusableButton>
+            ))}
+          </FocusableSection>
+          <ScrollEdgeChevrons atTop={genreEdges.atTop} atBottom={genreEdges.atBottom} />
+        </div>
 
-        <main className="flex flex-1 flex-col overflow-hidden md:flex-row">
-          <div className="flex max-h-64 w-full shrink-0 flex-col border-b border-surface-border md:h-auto md:max-h-none md:w-72 md:border-b-0 md:border-r">
+        <main className="flex flex-1 flex-col gap-3 overflow-hidden md:flex-row">
+          <div className="flex max-h-80 w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-surface-border/60 bg-surface/70 md:h-auto md:max-h-none md:w-80">
             <div className="p-2">
               <input
                 value={search}
@@ -286,64 +357,84 @@ export default function WatchClient({
                 className="w-full rounded-[10px] border border-surface-border bg-bg-tertiary px-3 py-1.5 text-sm outline-none transition focus:border-accent"
               />
             </div>
-            <FocusableSection as="div" focusKey={CHANNEL_LIST_FOCUS_KEY} className="flex-1 overflow-y-auto pb-2">
-              {selectedGenre === undefined && !loadingChannels && (
-                <p className="px-4 py-2 text-sm text-muted">Choose a genre to see channels.</p>
-              )}
-              {loadingChannels && (
-                <p className="flex items-center gap-2 px-4 py-2 text-sm text-muted">
-                  <Spinner /> Loading channels...
-                </p>
-              )}
-              {channelsError && <p className="px-4 py-2 text-sm text-danger">{channelsError}</p>}
-              {visibleChannels.map((c) => {
-                const isActive = activeChannelId === c.id;
-                const isFav = favoriteIds.has(c.id);
-                return (
-                  <FocusableSection
-                    key={c.id}
-                    as="div"
-                    className={`group flex w-full items-center gap-2 border-l-[3px] px-3 py-2 text-sm transition ${
-                      isActive
-                        ? "border-accent bg-accent-dim font-medium text-accent"
-                        : "border-transparent hover:bg-bg-hover"
-                    }`}
-                  >
-                    <FocusableButton
-                      onActivate={() => playChannel(c)}
-                      className="flex flex-1 items-center gap-2 overflow-hidden text-left"
-                    >
-                      <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded bg-bg-tertiary">
-                        <div className="flex h-full w-full items-center justify-center text-[10px] text-muted">
-                          {c.name.slice(0, 1).toUpperCase()}
-                        </div>
-                      </div>
-                      {c.number && <span className="shrink-0 text-xs text-muted">{c.number}</span>}
-                      <span className="truncate">{c.name}</span>
-                    </FocusableButton>
-                    <FocusableButton
-                      onActivate={() => toggleFavorite(c)}
-                      aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
-                      scrollIntoViewOnFocus={false}
-                      className={`shrink-0 transition ${isFav ? "text-accent" : "text-muted opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"}`}
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill={isFav ? "currentColor" : "none"}
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        className="h-3.5 w-3.5"
+            <div className="relative flex-1 overflow-hidden">
+              <FocusableSection
+                as="div"
+                focusKey={CHANNEL_LIST_FOCUS_KEY}
+                containerRef={channelListRef}
+                className="flex h-full flex-col overflow-y-auto pb-2"
+              >
+                {selectedGenre === undefined && !loadingChannels && (
+                  <p className="px-4 py-2 text-sm text-muted">Choose a genre to see channels.</p>
+                )}
+                {loadingChannels && (
+                  <p className="flex items-center gap-2 px-4 py-2 text-sm text-muted">
+                    <Spinner /> Loading channels...
+                  </p>
+                )}
+                {channelsError && <p className="px-4 py-2 text-sm text-danger">{channelsError}</p>}
+                {visibleChannels.map((c) => {
+                    const isActive = activeChannelId === c.id;
+                    const isFav = favoriteIds.has(c.id);
+                    return (
+                      <FocusableSection
+                        key={c.id}
+                        as="div"
+                        className={`group mx-2 my-0.5 flex items-center gap-3 rounded-lg px-3 py-3 text-base transition focus-within:bg-foreground focus-within:text-background ${
+                          isActive ? "text-accent" : "hover:bg-bg-hover"
+                        }`}
                       >
-                        <path d="M12 20.5s-7-4.35-9.5-8.6C.7 8.2 2.4 4.5 6 4.5c2 0 3.5 1.1 6 3.5 2.5-2.4 4-3.5 6-3.5 3.6 0 5.3 3.7 3.5 7.4C19 16.15 12 20.5 12 20.5Z" />
-                      </svg>
-                    </FocusableButton>
-                  </FocusableSection>
-                );
-              })}
-            </FocusableSection>
+                        <FocusableButton
+                          onActivate={() => playChannel(c)}
+                          focusClassName=""
+                          className="flex flex-1 items-center gap-3 overflow-hidden text-left"
+                        >
+                          {c.number && (
+                            <span
+                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sm font-semibold tabular-nums ${
+                                isActive ? "bg-accent text-accent-foreground" : "bg-bg-tertiary text-muted"
+                              }`}
+                            >
+                              {c.number}
+                            </span>
+                          )}
+                          <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded bg-bg-tertiary">
+                            <div className="flex h-full w-full items-center justify-center text-xs text-muted">
+                              {c.name.slice(0, 1).toUpperCase()}
+                            </div>
+                          </div>
+                          <span className="truncate font-medium">{c.name}</span>
+                        </FocusableButton>
+                        <FocusableButton
+                          onActivate={() => toggleFavorite(c)}
+                          aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
+                          scrollIntoViewOnFocus={false}
+                          focusClassName=""
+                          className={`shrink-0 transition ${
+                            isFav
+                              ? "text-accent group-focus-within:text-accent"
+                              : "text-muted opacity-0 group-hover:opacity-100 group-focus-within:text-background group-focus-within:opacity-100"
+                          }`}
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill={isFav ? "currentColor" : "none"}
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            className="h-4 w-4"
+                          >
+                            <path d="M12 20.5s-7-4.35-9.5-8.6C.7 8.2 2.4 4.5 6 4.5c2 0 3.5 1.1 6 3.5 2.5-2.4 4-3.5 6-3.5 3.6 0 5.3 3.7 3.5 7.4C19 16.15 12 20.5 12 20.5Z" />
+                          </svg>
+                        </FocusableButton>
+                      </FocusableSection>
+                    );
+                  })}
+              </FocusableSection>
+              <ScrollEdgeChevrons atTop={channelEdges.atTop} atBottom={channelEdges.atBottom} />
+            </div>
           </div>
 
-          <div className="flex min-h-[220px] flex-1 items-center justify-center bg-black p-4">
+          <div className="flex min-h-[220px] flex-1 items-center justify-center rounded-2xl bg-black p-4">
             {resolving ? (
               <p className="flex items-center gap-2 text-sm text-zinc-400">
                 <Spinner /> Resolving stream...

@@ -35,10 +35,10 @@ export default function SeriesDetail({
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-4">
         <div
-          className="relative h-28 w-20 shrink-0 overflow-hidden bg-bg-tertiary"
+          className="relative h-32 w-24 shrink-0 overflow-hidden bg-bg-tertiary"
           style={{ borderRadius: "var(--radius-md)" }}
         >
-          <div className="flex h-full w-full items-center justify-center text-xl text-muted">
+          <div className="flex h-full w-full items-center justify-center text-2xl text-muted">
             {title.slice(0, 1).toUpperCase()}
           </div>
         </div>
@@ -57,10 +57,10 @@ export default function SeriesDetail({
           <div key={season.id} className="rounded-lg border border-surface-border" style={{ borderRadius: "var(--radius-md)" }}>
             <FocusableButton
               onActivate={() => setOpenSeasonId(openSeasonId === season.id ? null : season.id)}
-              className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium"
+              className="flex w-full items-center justify-between px-4 py-4 text-left text-base font-medium"
             >
               {season.title}
-              <span className="text-muted">{season.episodes.length} episodes</span>
+              <span className="text-sm text-muted">{season.episodes.length} episodes</span>
             </FocusableButton>
             {openSeasonId === season.id && (
               <FocusableSection as="div" className="flex flex-col border-t border-surface-border">
@@ -76,7 +76,7 @@ export default function SeriesDetail({
                       seriesId: vodId,
                       seriesTitle: title,
                     })}
-                    className="px-4 py-2.5 text-sm transition hover:bg-bg-hover"
+                    className="px-4 py-3.5 text-base transition hover:bg-bg-hover"
                   >
                     {ep.title}
                   </FocusableLink>

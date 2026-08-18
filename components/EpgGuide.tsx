@@ -116,23 +116,25 @@ export default function EpgGuide({ profileId }: { profileId: string }) {
         {channels.map((channel) => {
           const programs = epgByChannel[channel.id];
           return (
-            <div key={channel.id} className="flex items-center gap-4 px-4 py-3">
-              <div className="flex w-40 shrink-0 items-center gap-2 overflow-hidden">
-                <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded bg-bg-tertiary">
+            <div key={channel.id} className="flex items-center gap-4 px-4 py-4">
+              <div className="flex w-48 shrink-0 items-center gap-3 overflow-hidden">
+                {channel.number && (
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-bg-tertiary text-sm font-semibold tabular-nums text-muted">
+                    {channel.number}
+                  </span>
+                )}
+                <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded bg-bg-tertiary">
                   <div className="flex h-full w-full items-center justify-center text-xs text-muted">
                     {channel.name.slice(0, 1).toUpperCase()}
                   </div>
                 </div>
-                <div className="truncate text-sm font-medium">
-                  {channel.number && <span className="mr-2 text-xs text-muted">{channel.number}</span>}
-                  {channel.name}
-                </div>
+                <div className="truncate text-base font-medium">{channel.name}</div>
               </div>
-              <div className="flex flex-1 gap-3 overflow-x-auto text-xs text-muted">
+              <div className="flex flex-1 gap-3 overflow-x-auto text-sm text-muted">
                 {programs === undefined && <span>Loading...</span>}
                 {programs?.length === 0 && <span>No programme data</span>}
                 {programs?.map((p) => (
-                  <span key={p.id} className="shrink-0 rounded-full bg-bg-tertiary px-3 py-1">
+                  <span key={p.id} className="shrink-0 rounded-full bg-bg-tertiary px-3 py-1.5">
                     {formatTime(p.startTimestamp)} · {p.title}
                   </span>
                 ))}

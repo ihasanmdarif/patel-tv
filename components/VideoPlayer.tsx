@@ -69,6 +69,30 @@ function IconBack(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+function IconExpand(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...props}>
+      <path
+        d="M9 4H4v5M15 4h5v5M4 15v5h5M20 15v5h-5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconCollapse(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...props}>
+      <path
+        d="M4 9h5V4M15 4v5h5M20 15h-5v5M9 20v-5H4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function formatDuration(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
   const m = Math.floor(seconds / 60);
@@ -101,6 +125,7 @@ export default function VideoPlayer({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [fullscreen, setFullscreen] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -224,13 +249,26 @@ export default function VideoPlayer({
     const handleActivity = () => showControlsTemporarily();
     const handleKeyDown = (e: KeyboardEvent) => {
       showControlsTemporarily();
-      if (isBackKey(e)) onBack?.();
+      if (isBackKey(e)) {
+        // First Back press backs out of fullscreen instead of navigating away —
+        // matches what a remote's Back button should do mid-playback. A second
+        // press (now out of fullscreen) falls through to onBack as normal.
+        if (document.fullscreenElement) {
+          e.preventDefault();
+          document.exitFullscreen().catch(() => {});
+          return;
+        }
+        onBack?.();
+      }
     };
+    const handleFullscreenChange = () => setFullscreen(document.fullscreenElement === container);
     container.addEventListener("mousemove", handleActivity);
     window.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => {
       container.removeEventListener("mousemove", handleActivity);
       window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
       if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
     };
   }, [onBack, scheduleControlsHide, showControlsTemporarily]);
@@ -253,6 +291,16 @@ export default function VideoPlayer({
     if (!video) return;
     video.muted = !video.muted;
     setMuted(video.muted);
+  }
+
+  function toggleFullscreen() {
+    const container = containerRef.current;
+    if (!container) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else {
+      container.requestFullscreen().catch(() => {});
+    }
   }
 
   return (
@@ -310,6 +358,14 @@ export default function VideoPlayer({
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
         >
           {muted ? <IconMute className="h-4 w-4" /> : <IconVolume className="h-4 w-4" />}
+        </FocusableButton>
+        <FocusableButton
+          onActivate={toggleFullscreen}
+          aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+          scrollIntoViewOnFocus={false}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+        >
+          {fullscreen ? <IconCollapse className="h-4 w-4" /> : <IconExpand className="h-4 w-4" />}
         </FocusableButton>
         {duration > 0 && (
           <span className="ml-1 shrink-0 text-xs text-white/80">

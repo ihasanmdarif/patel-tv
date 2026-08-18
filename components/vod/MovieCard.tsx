@@ -17,33 +17,33 @@ export default function MovieCard({
   onToggleFavorite: () => void;
 }) {
   return (
-    <div className="group relative w-40 shrink-0">
+    <div className="group relative w-48 shrink-0">
       <FocusableLink href={href} className="flex flex-col gap-2 transition hover:-translate-y-1">
         <div
           className="relative aspect-[2/3] overflow-hidden bg-bg-tertiary"
           style={{ borderRadius: "var(--radius-md)", boxShadow: "var(--shadow-sm)" }}
         >
-          <div className="flex h-full w-full items-center justify-center text-2xl text-muted">
+          <div className="flex h-full w-full items-center justify-center text-3xl text-muted">
             {title.slice(0, 1).toUpperCase()}
           </div>
           <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100 group-focus-within:bg-black/30 group-focus-within:opacity-100">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-black">
-              <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-black">
+              <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
                 <path d="M8 5.5v13l11-6.5-11-6.5Z" />
               </svg>
             </div>
           </div>
         </div>
         <div>
-          <p className="truncate text-sm font-medium">{title}</p>
-          {subtitle && <p className="truncate text-xs text-muted">{subtitle}</p>}
+          <p className="truncate text-base font-medium">{title}</p>
+          {subtitle && <p className="truncate text-sm text-muted">{subtitle}</p>}
         </div>
       </FocusableLink>
       <FocusableButton
         onActivate={onToggleFavorite}
         aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
         scrollIntoViewOnFocus={false}
-        className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white transition hover:bg-black/70"
+        className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white transition hover:bg-black/70"
       >
         <svg
           viewBox="0 0 24 24"
