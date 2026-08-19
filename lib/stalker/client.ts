@@ -92,6 +92,26 @@ async function resolveApiUrl(config: StalkerProfileConfig): Promise<URL> {
   return apiUrl;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Portals rate-limit with a plain 429 and no useful body. Retrying instantly (as the
+// auth-retry path in callWithRetry does for session errors) just trips the limiter again,
+// so this is handled separately, right at the fetch, honoring Retry-After when the portal
+// sends one and backing off exponentially (capped) when it doesn't.
+const RATE_LIMIT_MAX_ATTEMPTS = 4;
+const RATE_LIMIT_BASE_DELAY_MS = 1000;
+const RATE_LIMIT_MAX_DELAY_MS = 15000;
+
+function parseRetryAfter(header: string | null): number | null {
+  if (!header) return null;
+  const seconds = Number(header);
+  if (Number.isFinite(seconds)) return seconds * 1000;
+  const date = Date.parse(header);
+  return Number.isFinite(date) ? Math.max(0, date - Date.now()) : null;
+}
+
 async function stalkerRequest(
   config: StalkerProfileConfig,
   params: Record<string, string>,
@@ -111,7 +131,17 @@ async function stalkerRequest(
   };
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(url.toString(), { headers, cache: "no-store" });
+  let res: Response;
+  for (let attempt = 1; ; attempt++) {
+    res = await fetch(url.toString(), { headers, cache: "no-store" });
+    if (res.status !== 429 || attempt >= RATE_LIMIT_MAX_ATTEMPTS) break;
+    const retryAfter = parseRetryAfter(res.headers.get("Retry-After"));
+    const backoff = Math.min(RATE_LIMIT_BASE_DELAY_MS * 2 ** (attempt - 1), RATE_LIMIT_MAX_DELAY_MS);
+    const delay = retryAfter ?? backoff;
+    await res.text(); // drain before retrying on the same connection
+    await sleep(delay + Math.random() * 250);
+  }
+
   const text = await res.text();
   if (!res.ok) {
     throw new StalkerError(`Portal request failed (${res.status})`, res.status);
@@ -215,7 +245,7 @@ async function callWithRetry<T>(
     const token = await getValidToken(config);
     return await fn(token);
   } catch (err) {
-    if (!(err instanceof StalkerError)) throw err;
+    if (!(err instanceof StalkerError) || err.status === 429) throw err;
     clearCachedToken(config.id);
     const freshToken = await getValidToken(config, true);
     return await fn(freshToken);
@@ -257,7 +287,7 @@ type RawChannel = {
 function toChannel(c: RawChannel): Channel {
   return {
     id: String(c.id),
-    name: c.name,
+    name: c.name || "Unknown",
     number: c.number != null ? String(c.number) : null,
     cmd: c.cmd,
     genreId: c.tv_genre_id != null ? String(c.tv_genre_id) : null,
@@ -289,7 +319,7 @@ async function fetchChannelPage(
 // minute-plus wait. Fetch the first page to learn the page size and total count, then fetch the
 // rest concurrently (bounded, so we don't hammer the portal) instead of walking pages serially.
 // Shared by itv (getChannels) and vod (getVodItems) — same get_ordered_list pagination shape.
-const PAGE_FETCH_CONCURRENCY = 8;
+const PAGE_FETCH_CONCURRENCY = 3;
 const MAX_PAGES = 1000; // safety net against an unexpected payload shape looping forever
 
 async function fetchAllPages<T>(
