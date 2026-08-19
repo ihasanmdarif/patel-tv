@@ -307,17 +307,17 @@ export default function WatchClient({
       </header>
 
       <div className="flex flex-1 flex-col gap-3 overflow-hidden p-3 md:flex-row">
-        <div className="relative flex w-full shrink-0 overflow-hidden rounded-2xl border border-surface-border/60 bg-surface/70 md:w-56 md:flex-col">
+        <div className="relative flex max-h-64 w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-surface-border/60 bg-surface/70 md:h-auto md:max-h-none md:w-56">
           <FocusableSection
             as="div"
             containerRef={genreListRef}
-            className="flex w-full flex-row gap-1 overflow-x-auto p-2 md:flex-col md:gap-0.5 md:overflow-y-auto md:py-3"
+            className="flex w-full flex-col gap-0.5 overflow-y-auto p-2 md:py-3"
           >
             {process.env.NODE_ENV !== "development" && (
               <FocusableButton
                 onActivate={() => setSelectedGenre(null)}
                 focusClassName=""
-                className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2.5 text-left text-base font-medium transition focus:bg-foreground focus:text-background md:mx-2 md:whitespace-normal ${
+                className={`mx-2 rounded-lg px-3 py-2.5 text-left text-base font-medium transition focus:bg-foreground focus:text-background ${
                   selectedGenre === null ? "text-accent" : "text-foreground hover:bg-bg-hover"
                 }`}
               >
@@ -325,17 +325,17 @@ export default function WatchClient({
               </FocusableButton>
             )}
             {loadingGenres && (
-              <p className="flex shrink-0 items-center gap-2 px-5 py-2 text-sm text-muted">
+              <p className="flex items-center gap-2 px-5 py-2 text-sm text-muted">
                 <Spinner /> Loading genres...
               </p>
             )}
-            {genresError && <p className="shrink-0 px-5 py-2 text-sm text-danger">{genresError}</p>}
+            {genresError && <p className="px-5 py-2 text-sm text-danger">{genresError}</p>}
             {genres.map((g) => (
               <FocusableButton
                 key={g.id}
                 onActivate={() => setSelectedGenre(g.id)}
                 focusClassName=""
-                className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2.5 text-left text-base transition focus:bg-foreground focus:text-background md:mx-2 md:whitespace-normal ${
+                className={`mx-2 rounded-lg px-3 py-2.5 text-left text-base transition focus:bg-foreground focus:text-background ${
                   selectedGenre === g.id ? "font-medium text-accent" : "text-foreground hover:bg-bg-hover"
                 }`}
               >
