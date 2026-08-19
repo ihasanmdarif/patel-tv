@@ -61,6 +61,11 @@ jobs:
     needs: [build-app, build-remux]
     runs-on: [self-hosted, proxmox]
     steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Pull and restart
         working-directory: /root/patel-tv
         run: |
