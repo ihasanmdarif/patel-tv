@@ -45,6 +45,11 @@ export function buildCookie(config: StalkerProfileConfig): string {
   return `mac=${encodeURIComponent(config.macAddress)}; stb_lang=en; timezone=${timezone}`;
 }
 
+// Neither fetch below had a timeout, so a slow/unreachable portal blocked the whole
+// server-rendered page (e.g. the home page after login) for however long Node's own
+// socket defaults took to give up — minutes, with no error ever surfacing.
+const PORTAL_FETCH_TIMEOUT_MS = 10000;
+
 export class StalkerError extends Error {
   status?: number;
   constructor(message: string, status?: number) {
@@ -73,7 +78,11 @@ async function resolveApiUrl(config: StalkerProfileConfig): Promise<URL> {
 
   if (!pathname.endsWith("/c")) {
     try {
-      const probe = await fetch(parsed.toString(), { redirect: "follow", cache: "no-store" });
+      const probe = await fetch(parsed.toString(), {
+        redirect: "follow",
+        cache: "no-store",
+        signal: AbortSignal.timeout(PORTAL_FETCH_TIMEOUT_MS),
+      });
       const finalPath = new URL(probe.url).pathname.replace(/\/+$/, "");
       if (finalPath.endsWith("/c")) pathname = finalPath;
     } catch {
@@ -133,7 +142,11 @@ async function stalkerRequest(
 
   let res: Response;
   for (let attempt = 1; ; attempt++) {
-    res = await fetch(url.toString(), { headers, cache: "no-store" });
+    res = await fetch(url.toString(), {
+      headers,
+      cache: "no-store",
+      signal: AbortSignal.timeout(PORTAL_FETCH_TIMEOUT_MS),
+    });
     if (res.status !== 429 || attempt >= RATE_LIMIT_MAX_ATTEMPTS) break;
     const retryAfter = parseRetryAfter(res.headers.get("Retry-After"));
     const backoff = Math.min(RATE_LIMIT_BASE_DELAY_MS * 2 ** (attempt - 1), RATE_LIMIT_MAX_DELAY_MS);
