@@ -306,12 +306,12 @@ export default function WatchClient({
         <h1 className="truncate text-sm font-semibold">{profileName}</h1>
       </header>
 
-      <div className="flex flex-1 flex-col gap-3 overflow-hidden p-3 md:flex-row">
-        <div className="relative flex max-h-64 w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-surface-border/60 bg-surface/70 md:h-auto md:max-h-none md:w-56">
+      <div className="flex flex-1 flex-row gap-3 overflow-hidden p-3">
+        <div className="relative flex h-auto w-56 shrink-0 flex-col overflow-hidden rounded-2xl border border-surface-border/60 bg-surface/70">
           <FocusableSection
             as="div"
             containerRef={genreListRef}
-            className="flex w-full flex-col gap-0.5 overflow-y-auto p-2 md:py-3"
+            className="flex w-full flex-col gap-0.5 overflow-y-auto p-2 py-3"
           >
             {process.env.NODE_ENV !== "development" && (
               <FocusableButton
@@ -346,8 +346,8 @@ export default function WatchClient({
           <ScrollEdgeChevrons atTop={genreEdges.atTop} atBottom={genreEdges.atBottom} />
         </div>
 
-        <main className="flex flex-1 flex-col gap-3 overflow-hidden md:flex-row">
-          <div className="flex max-h-80 w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-surface-border/60 bg-surface/70 md:h-auto md:max-h-none md:w-80">
+        <main className="flex flex-1 flex-row gap-3 overflow-hidden">
+          <div className="flex h-auto w-80 shrink-0 flex-col overflow-hidden rounded-2xl border border-surface-border/60 bg-surface/70">
             <div className="p-2">
               <input
                 value={search}
