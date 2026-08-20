@@ -306,7 +306,7 @@ export default function WatchClient({
         <h1 className="truncate text-sm font-semibold">{profileName}</h1>
       </header>
 
-      <div className="flex flex-1 flex-row gap-3 overflow-hidden p-3">
+      <div className="flex flex-1 flex-row gap-3 overflow-x-auto overflow-y-hidden p-3">
         <div className="relative flex h-auto w-56 shrink-0 flex-col overflow-hidden rounded-2xl border border-surface-border/60 bg-surface/70">
           <FocusableSection
             as="div"
@@ -346,7 +346,7 @@ export default function WatchClient({
           <ScrollEdgeChevrons atTop={genreEdges.atTop} atBottom={genreEdges.atBottom} />
         </div>
 
-        <main className="flex flex-1 flex-row gap-3 overflow-hidden">
+        <main className="flex flex-1 flex-row gap-3 overflow-y-hidden">
           <div className="flex h-auto w-80 shrink-0 flex-col overflow-hidden rounded-2xl border border-surface-border/60 bg-surface/70">
             <div className="p-2">
               <input
@@ -434,7 +434,7 @@ export default function WatchClient({
             </div>
           </div>
 
-          <div className="flex min-h-[220px] flex-1 items-center justify-center rounded-2xl bg-black p-4">
+          <div className="flex min-h-[220px] w-[420px] min-w-[420px] flex-1 items-center justify-center rounded-2xl bg-black p-4">
             {resolving ? (
               <p className="flex items-center gap-2 text-sm text-zinc-400">
                 <Spinner /> Resolving stream...
